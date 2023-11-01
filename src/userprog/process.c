@@ -101,8 +101,19 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  for (int i=0;i<1000000000;i++);
-  return -1;
+  struct thread *cur = thread_current();
+  int exit_status = -1;
+  for (struct list_elem *e = &cur->child_list; e != list_end(&cur->child_list); e = list_next(e)) {
+    struct thread *thr = list_entry(e, struct thread, child_elem);
+    if (thr->tid == child_tid) {
+      exit_status = thr->exit_status;
+      sema_down(&thr->child_lock);
+      list_remove(&thr->child_elem);
+      sema_up(&thr->exit_lock);
+      break;
+    }
+  }
+  return exit_status;
 }
 
 /* Free the current process's resources. */
