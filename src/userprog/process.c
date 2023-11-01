@@ -68,9 +68,6 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  // 기존 프로세스 제거
-  process_cleanup();
-
   success = load (file_name, &if_.eip, &if_.esp);
 
   palloc_free_page(file_name);
