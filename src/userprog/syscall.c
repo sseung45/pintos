@@ -201,10 +201,10 @@ void check_user_address(void *addr) {
 void get_argument(void *esp, int *arg , int count) {
   uint32_t *sp = esp;
   int cnt = 0;
-  for (;count != 0; count--) {
+  for (;count > 0; count--) {
     check_user_address(sp + 4);
     arg[cnt] = sp + 4;
     cnt ++;
-    sp = sp + 4;
+    sp += 4;
   }
 }
