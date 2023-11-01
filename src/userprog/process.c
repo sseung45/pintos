@@ -128,7 +128,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  sema_up(&(cur->child_lock))
+  sema_up(&cur->child_lock);
+  sema_down(&cur->exit_lock);
 }
 
 /* Sets up the CPU for running user code in the current

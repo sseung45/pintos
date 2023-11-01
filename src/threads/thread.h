@@ -111,7 +111,7 @@ struct thread
     
     struct semaphore child_lock;
     struct semaphore load_lock;
-    struct semaphore mem_lock;
+    struct semaphore exit_lock;
   };
 
 /* If false (default), use round-robin scheduler.
