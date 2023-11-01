@@ -112,6 +112,10 @@ struct thread
     struct semaphore child_lock;  // wait 시 child exit를 기다림
     struct semaphore load_lock;  // 부모가 child가 메모리에 적재되는 것을 기다림
     struct semaphore exit_lock;  // exit 시 child는 부모 child_list에서 제거되는 것을 기다림
+    
+    // file descriptor, limit: 128
+    // fd[0]: stdin, fd[1]: stdout, fd[2]: stderr
+    struct file *fd[128]; 
   };
 
 /* If false (default), use round-robin scheduler.
