@@ -90,6 +90,12 @@ void exit(int status){
 
   thread_current()->exit_status = status;
 
+  int fd_max = thread_current()->fd_count;
+  for (int i = 2; i <= fd_max; i++) {
+    if (thread_current()->fd[i] != NULL)
+      close(i);
+  }
+
   thread_exit();
 }
 
