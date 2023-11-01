@@ -63,6 +63,8 @@ void exit(int status){
 
   printf("%s: exit(%d)\n", t->name, status);
 
+  thread_current()->exit_status = status;
+
   thread_exit();
 }
 
