@@ -48,7 +48,10 @@ process_execute (const char *file_name)
   tid = thread_create (token, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+
+  // sema down child lock? &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
   return tid;
+
 }
 
 /* A thread function that loads a user process and starts it
@@ -65,12 +68,19 @@ start_process (void *file_name_)
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
+  // 기존 프로세스 제거
+  process_cleanup();
+
   success = load (file_name, &if_.eip, &if_.esp);
+  if (!success) {
+    palloc_free_page(file_name);
+    // sema up child lock? &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+    return -1;
+  }
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+  // sema up child lock? &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
