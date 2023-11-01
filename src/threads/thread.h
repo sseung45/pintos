@@ -100,6 +100,17 @@ struct thread
 
     /* Owned by thread.c. */
     unsigned magic;                     /* Detects stack overflow. */
+
+    // Project 2 - syscall
+    struct thread *parent;  // 부모 thread 포인터
+    struct list_elem child_elem;  // 자식 thread list element
+    struct list child_list;  // 자식 thread list
+
+    int exit_status;  // exit status number
+    
+    struct semaphore child_lock;
+    struct semaphore load_lock;
+    struct semaphore mem_lock;
   };
 
 /* If false (default), use round-robin scheduler.
