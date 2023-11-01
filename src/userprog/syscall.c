@@ -54,6 +54,40 @@ syscall_handler (struct intr_frame *f UNUSED)
   }
 }
 
+void halt() {
+  shutdown_power_off();
+}
+
+void exit(int status){
+  struct thread *t = thread_current();
+
+  printf("%s: exit(%d)\n", t->name, status);
+
+  thread_exit();
+}
+
+pid_t exec(const char *cmdline) {
+  return process_execute(cmdline);
+}
+
+int wait (pid_t pid) {
+  return process_wait(pid);
+}
+
+bool create(const char *file, unsigned initial_size) {
+  if (file == NULL)
+    exit(-1);
+  else
+    return filesys_create(file, initial_size);
+}
+
+bool remove(const char *file) {
+  if (file == NULL)
+    exit(-1);
+  else
+    return filesys_remove(file);
+}
+
 void check_user_address(void *addr) {
   // 포인터가 user 영역 주소를 가리키는지 확인
   if (!is_user_vaddr(addr) || is_kernel_vaddr(addr) || addr == NULL) {
