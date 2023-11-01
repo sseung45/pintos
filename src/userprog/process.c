@@ -49,7 +49,7 @@ process_execute (const char *file_name)
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
 
-  // sema down child lock? &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+  sema_down(&thread_current()->load_lock);
   return tid;
 
 }
@@ -72,15 +72,12 @@ start_process (void *file_name_)
   process_cleanup();
 
   success = load (file_name, &if_.eip, &if_.esp);
-  if (!success) {
-    palloc_free_page(file_name);
-    // sema up child lock? &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
-    return -1;
-  }
 
-  /* If load failed, quit. */
-  palloc_free_page (file_name);
-  // sema up child lock? &&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&
+  palloc_free_page(file_name);
+  sema_up(&thread_current()->parent->load_lock);
+  if (!success) {
+    thread_exit();
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -131,6 +128,7 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  sema_up(&(cur->child_lock))
 }
 
 /* Sets up the CPU for running user code in the current
