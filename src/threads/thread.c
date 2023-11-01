@@ -477,6 +477,7 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back (&(running_thread()->child_list), &(t->child_elem));
   for (int i = 0; i < 128; i++)
     t->fd[i] = NULL;
+  fd_count = 2;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

@@ -114,8 +114,9 @@ struct thread
     struct semaphore exit_lock;  // exit 시 child는 부모 child_list에서 제거되는 것을 기다림
     
     // file descriptor, limit: 128
-    // fd[0]: stdin, fd[1]: stdout, fd[2]: stderr
-    struct file *fd[128]; 
+    // fd[0]: stdin, fd[1]: stdout
+    struct file *fd[128];
+    int fd_count;
   };
 
 /* If false (default), use round-robin scheduler.
