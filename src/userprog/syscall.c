@@ -171,7 +171,7 @@ int read(int fd, void *buffer, unsigned size) {
   lock_acquire(&file_lock);
   int read_size_byte = file_read(f, buffer, size);
   lock_release(&file_lock);
-  return read_size_byte
+  return read_size_byte;
 }
 
 int write(int fd, const void *buffer, unsigned size) {
