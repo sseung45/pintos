@@ -8,6 +8,8 @@
 
 static void syscall_handler (struct intr_frame *);
 
+struct lock file_lock;
+
 void
 syscall_init (void) 
 {
@@ -143,17 +145,27 @@ int read(int fd, void *buffer, unsigned size) {
   check_user_address(buffer);
   if (fd == 0) {  // stdin
     int idx = 0;
-    for (; idx < size; idx++)
-      if (((char *)buffer)[idx] == '\0')
+    char w;
+    for (; idx < size; idx++) {
+      w = input_getc();
+      ((char *)buffer)[idx] = w;
+      if (w == '\0')
         break;
+    }
     return idx;
   }
+  if (fd == 1)
+    return -1;
 
-  // fd != stdin
+  // fd != 0, 1
   struct file *f = thread_current()->fd[fd];
   if (f == NULL)
-    exit(-1);
-  return file_read(f, buffer, size);
+    return -1;
+
+  lock_acquire(&file_lock);
+  int read_size_byte = file_read(f, buffer, size);
+  lock_release(&file_lock);
+  return read_size_byte
 }
 
 int write(int fd, const void *buffer, unsigned size) {
