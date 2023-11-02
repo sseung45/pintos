@@ -125,10 +125,15 @@ bool remove(const char *file) {
 int open(const char *file) {
   check_user_address(file);
   struct file *open_file = filesys_open(file);
-  int fd_idx = thread_current()->fd_count;
-  if (open_file == NULL || fd_idx < 128)
+  if (open_file == NULL)
     return -1;
 
+  int fd_idx = thread_current()->fd_count;
+  if (fd_idx >= 128) {
+    file_close(open_file);
+    return -1;
+  }
+    
   thread_current()->fd[fd_idx] = open_file;
   thread_current()->fd_count++;
   return fd_idx;
