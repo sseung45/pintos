@@ -187,7 +187,7 @@ void seek(int fd, unsigned position) {
   struct file *f = thread_current()->fd[fd];
   if (f == NULL)
     exit(-1);
-  return file_seek(f, position);
+  file_seek(f, position);
 }
 
 unsigned tell(int fd) {
