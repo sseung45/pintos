@@ -58,7 +58,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_READ: // 3 arguement
       get_argument(esp, args, 3);
-      f->eax = filesize((int)(args[0]), (void *)(args[1]), (unsigned)(args[2]));
+      f->eax = read((int)(args[0]), (void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_WRITE: // 3 arguement
       get_argument(esp, args, 3);
