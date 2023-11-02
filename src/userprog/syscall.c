@@ -180,12 +180,18 @@ int write(int fd, const void *buffer, unsigned size) {
     putbuf(buffer, size);
     return size;
   }
+  if (fd == 0)
+    return 0;
 
-  // fd != stdout
+  // fd != 0, 1
   struct file *f = thread_current()->fd[fd];
   if (f == NULL)
-    exit(-1);
-  return file_write(f, buffer, size);
+    return 0;
+  
+  lock_acquire(&file_lock);
+  int write_bytes = file_write(f, buffer, size);
+  lock_release(&file_lock);
+  return write_bytes;
 }
 
 void seek(int fd, unsigned position) {
