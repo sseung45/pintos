@@ -194,7 +194,7 @@ void close(int fd) {
 
 void check_user_address(void *addr) {
   // 포인터가 user 영역 주소를 가리키는지 확인
-  if (!is_user_vaddr(addr) || is_kernel_vaddr(addr) || addr == NULL)
+  if (is_kernel_vaddr(addr) || addr == NULL)
     exit(-1);
 }
 
