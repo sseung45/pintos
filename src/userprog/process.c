@@ -40,11 +40,11 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
-  char *save_ptr;
-  file_name = strtok_r(file_name, " ", &save_ptr);
+  char *ret_ptr, *save_ptr;
+  ret_ptr = strtok_r(file_name, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
