@@ -92,7 +92,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_CLOSE: // 1 arguement
       get_argument(esp, args, 1);
-      f->eax = tell((int)(args[0]));
+      close((int)(args[0]));
       break;
   }
 }
