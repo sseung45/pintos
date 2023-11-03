@@ -86,6 +86,10 @@ start_process (void *file_name_)
 
   argument_passing(argc, argv, &if_);
 
+  uintptr_t ofs = **(uintptr_t**)if_->esp;
+  size_t size = PHYS_BASE - ofs;
+  hex_dump(ofs, *if_->esp, size, true);
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
