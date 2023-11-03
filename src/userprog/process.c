@@ -41,13 +41,15 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   char *ret_ptr, *save_ptr;
-  ret_ptr = fn_copy;
+  ret_ptr = palloc_get_page(0);
+  strlcpy(ret_ptr, fn_copy, PGSIZE)
   ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
   printf("**********\n%s, %s\n**************\n", ret_ptr, fn_copy);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
+  palloc_free_page(ret_ptr);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
   return tid;
