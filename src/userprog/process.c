@@ -42,7 +42,7 @@ process_execute (const char *file_name)
 
   char *ret_ptr, *save_ptr;
   ret_ptr = palloc_get_page(0);
-  strlcpy(ret_ptr, fn_copy, PGSIZE)
+  strlcpy(ret_ptr, fn_copy, PGSIZE);
   ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
   printf("**********\n%s, %s\n**************\n", ret_ptr, fn_copy);
