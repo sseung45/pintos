@@ -81,6 +81,10 @@ start_process (void *file_name_)
     ret_ptr = strtok_r(NULL, " ", &save_ptr);
   }
 
+  printf("argc: %d\n", argc);
+  for(int i = 0; i < argc; i++)
+    printf("argv[%d]: %s", i, argv[i]);
+
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
@@ -106,35 +110,35 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
     _if->esp -= (strlen(argv[i]) + 1);
     memcpy(_if->esp, argv[i], strlen(argv[i]) + 1);
     argv[i] = (char*)_if->esp;
-  printf("************\nesp: %x\n**************", (int)_if->esp);
+  printf("************\nesp: %x\n**************\n", (int)_if->esp);
   }
 
   _if->esp -= ((int)_if->esp % 4 + 4); //padding + argv[4]에 0 push
   memset(_if->esp, 0, (int)_if->esp % 4 + 4);
 
-  printf("************\nesp: %x\n**************", (int)_if->esp);
+  printf("************\nesp: %x\n**************\n", (int)_if->esp);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
     _if->esp -= 4;
     *(char**)_if->esp = argv[i];
 
-    printf("************\nesp: %x\n**************", (int)_if->esp);
+    printf("************\nesp: %x\n**************\n", (int)_if->esp);
   }
 
   _if->esp -= 4; //argv address push
   *(char**)_if->esp = _if->esp + 4;
 
-  printf("************\nesp: %x\n**************", (int)_if->esp);
+  printf("************\nesp: %x\n**************\n", (int)_if->esp);
 
   _if->esp -= 4; //argc push
   *(int*)_if->esp = argc;
 
-  printf("************\nesp: %x\n**************", (int)_if->esp);
+  printf("************\nesp: %x\n**************\n", (int)_if->esp);
 
   _if->esp -= 4; //return address push
   memset(_if->esp, 0, 4);
 
-  printf("************\nesp: %x\n**************", (int)_if->esp);
+  printf("************\nesp: %x\n**************\n", (int)_if->esp);
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
