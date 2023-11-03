@@ -44,7 +44,7 @@ process_execute (const char *file_name)
   ret_ptr = fn_copy;
   ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
-  printf("**********\n%s, %s\n**************\n", ret_ptr, fn_copy)
+  printf("**********\n%s, %s\n**************\n", ret_ptr, fn_copy);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
