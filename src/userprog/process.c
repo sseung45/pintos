@@ -108,7 +108,7 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
     printf("%d\n",(int)strlen(argv[i]) + 1);
     _if->esp -= ((int)strlen(argv[i]) + 1);
     printf("************argv value를 push\nesp: %x\n**************\n", (int)_if->esp);
-    memcpy(_if->esp, argv[i], strlen(argv[i]) + 1);
+    memcpy(_if->esp, argv[i], (int)strlen(argv[i]) + 1);
     argv[i] = (char*)_if->esp;
   }
 
