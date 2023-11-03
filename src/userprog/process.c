@@ -70,12 +70,15 @@ start_process (void *file_name_)
 
   ret_ptr = strtok_r(file_name, " ", &save_ptr);
 
+  
+  printf("**********\n%s, %s\n**************\n", ret_ptr, file_name);
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (ret_ptr, &if_.eip, &if_.esp);
+  success = load (file_name, &if_.eip, &if_.esp);
   
   while(ret_ptr != NULL){
     argv[argc] = ret_ptr;
