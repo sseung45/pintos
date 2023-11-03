@@ -101,12 +101,12 @@ start_process (void *file_name_)
 }
 
 void argument_passing(int argc, char **argv, struct intr_frame *_if){
-  
+
   printf("************초기 esp\nesp: %x\n**************\n", (int)_if->esp);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] value push
-    printf("%d\n",strlen(argv[i]) + 1);
-    _if->esp -= (strlen(argv[i]) + 1);
+    printf("%d\n",(int)strlen(argv[i]) + 1);
+    _if->esp -= ((int)strlen(argv[i]) + 1);
     printf("************argv value를 push\nesp: %x\n**************\n", (int)_if->esp);
     memcpy(_if->esp, argv[i], strlen(argv[i]) + 1);
     argv[i] = (char*)_if->esp;
