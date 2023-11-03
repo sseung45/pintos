@@ -20,6 +20,8 @@
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
+void argument_passing(int argc, char **argv, struct intr_frame *_if);
+
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -38,6 +40,9 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  char *save_ptr;
+  file_name = strtok_r(file_name, " ", &save_ptr);
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -54,17 +59,31 @@ start_process (void *file_name_)
   struct intr_frame if_;
   bool success;
 
+  int argc = 0;
+  char *argv[128];
+  char *ret_ptr, *save_ptr;
+
+  ret_ptr = strtok_r(file_name, " ", &save_ptr);
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
   if_.cs = SEL_UCSEG;
   if_.eflags = FLAG_IF | FLAG_MBS;
-  success = load (file_name, &if_.eip, &if_.esp);
+  success = load (ret_ptr, &if_.eip, &if_.esp);
+  
+  while(ret_ptr != NULL){
+    argv[argc] = ret_ptr;
+    argc++;
+    ret_ptr = strtok_r(NULL, " ", &save_ptr);
+  }
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
+
+  argument_passing(int argc, char **argv, struct intr_frame *_if);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -74,6 +93,32 @@ start_process (void *file_name_)
      and jump to it. */
   asm volatile ("movl %0, %%esp; jmp intr_exit" : : "g" (&if_) : "memory");
   NOT_REACHED ();
+}
+
+void argument_passing(int argc, char **argv, struct intr_frame *_if){
+
+  for(int i = argc - 1; i >= 0; i--){ //argv[] value push
+    _if->esp -= (strlen(argv[i]) + 1)
+    memcpy(_if->esp, argv[i], strlen(argv[i]) + 1)
+    argv[i] = _if->esp;
+  }
+
+  _if->esp -= (_if->esp % 4 + 4); //padding + argv[4]에 0 push
+  memset(_if->esp, 0, _if->esp % 4 + 4);
+
+  for(int i = argc - 1; i >= 0; i--){ //argv[] address push
+    _if->esp -= 4;
+    _if->esp = argv[i];
+  }
+
+  _if->esp -= 4; //argv address push
+  _if->esp = _if->esp + 4;
+
+  _if->esp -= 4; //argc push
+  *(_if->esp) = argc;
+
+  _if->esp -= 4; //return address push
+  memset(_if->esp, 0, 4);
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -88,7 +133,7 @@ start_process (void *file_name_)
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while(true){};
+  while(true){}
   return -1;
 }
 
