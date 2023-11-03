@@ -103,8 +103,8 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
     argv[i] = _if->esp;
   }
 
-  _if->esp -= (_if->esp % 4 + 4); //padding + argv[4]에 0 push
-  memset(_if->esp, 0, _if->esp % 4 + 4);
+  _if->esp -= ((char*)_if->esp % 4 + 4); //padding + argv[4]에 0 push
+  memset(_if->esp, 0, (char*)_if->esp % 4 + 4);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
     _if->esp -= 4;
@@ -115,7 +115,7 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
   _if->esp = _if->esp + 4;
 
   _if->esp -= 4; //argc push
-  (int)*(_if->esp) = argc;
+  *((int*)_if->esp) = argc;
 
   _if->esp -= 4; //return address push
   memset(_if->esp, 0, 4);
