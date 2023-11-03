@@ -88,7 +88,7 @@ start_process (void *file_name_)
 
   uintptr_t ofs = **(uintptr_t**)if_.esp;
   size_t size = PHYS_BASE - ofs;
-  hex_dump(ofs, *if_.esp, size, true);
+  hex_dump(ofs, *(char**)if_.esp, size, true);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
