@@ -70,9 +70,6 @@ start_process (void *file_name_)
 
   ret_ptr = strtok_r(file_name, " ", &save_ptr);
 
-  
-  printf("**********\n%s, %s\n**************\n", ret_ptr, file_name);
-
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
