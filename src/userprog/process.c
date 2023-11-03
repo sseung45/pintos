@@ -100,12 +100,12 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] value push
     *(char**)_if->esp -= (strlen(argv[i]) + 1);
-    memcpy(*_if->esp, argv[i], strlen(argv[i]) + 1);
+    memcpy(*(char**)_if->esp, argv[i], strlen(argv[i]) + 1);
     argv[i] = *(char**)_if->esp;
   }
 
   *_if->esp -= ((int)*(char**)_if->esp % 4 + 4); //padding + argv[4]에 0 push
-  memset(*_if->esp, 0, (int)*(char**)_if->esp % 4 + 4);
+  memset(*(char**)_if->esp, 0, (int)*(char**)_if->esp % 4 + 4);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
     *(char**)_if->esp -= 4;
@@ -119,7 +119,7 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
   **(int**)_if->esp = argc;
 
   *(char**)_if->esp -= 4; //return address push
-  memset(*_if->esp, 0, 4);
+  memset(*(char**)_if->esp, 0, 4);
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
