@@ -41,7 +41,8 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   char *ret_ptr, *save_ptr;
-  ret_ptr = strtok_r(file_name, " ", &save_ptr);
+  strlcpy(ret_ptr, fn_copy, PGSIZE)
+  ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
@@ -98,26 +99,26 @@ start_process (void *file_name_)
 void argument_passing(int argc, char **argv, struct intr_frame *_if){
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] value push
-    *_if->esp -= (strlen(argv[i]) + 1);
+    *(char**)_if->esp -= (strlen(argv[i]) + 1);
     memcpy(*_if->esp, argv[i], strlen(argv[i]) + 1);
     argv[i] = *(char**)_if->esp;
   }
 
-  *_if->esp -= ((int)*_if->esp % 4 + 4); //padding + argv[4]에 0 push
-  memset(*_if->esp, 0, (int)*_if->esp % 4 + 4);
+  *_if->esp -= ((int)*(char**)_if->esp % 4 + 4); //padding + argv[4]에 0 push
+  memset(*_if->esp, 0, (int)*(char**)_if->esp % 4 + 4);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
-    *_if->esp -= 4;
-    *_if->esp = argv[i];
+    *(char**)_if->esp -= 4;
+    *(char**)_if->esp = argv[i];
   }
 
-  *_if->esp -= 4; //argv address push
-  *_if->esp = _if->esp + 4;
+  *(char**)_if->esp -= 4; //argv address push
+  *(char**)_if->esp = *(char**)_if->esp + 4;
 
-  *_if->esp -= 4; //argc push
-  (int)**_if->esp = argc;
+  *(char**)_if->esp -= 4; //argc push
+  **(int**)_if->esp = argc;
 
-  *_if->esp -= 4; //return address push
+  *(char**)_if->esp -= 4; //return address push
   memset(*_if->esp, 0, 4);
 }
 
