@@ -44,6 +44,8 @@ process_execute (const char *file_name)
   ret_ptr = fn_copy;
   ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
+  printf("**********\n%s, %s\n**************\n", ret_ptr, fn_copy)
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
@@ -103,7 +105,7 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
   for(int i = argc - 1; i >= 0; i--){ //argv[] value push
     _if->esp -= (strlen(argv[i]) + 1);
     memcpy(_if->esp, argv[i], strlen(argv[i]) + 1);
-    argv[i] = _if->esp;
+    argv[i] = (char*)_if->esp;
   }
 
   _if->esp -= ((int)_if->esp % 4 + 4); //padding + argv[4]에 0 push
