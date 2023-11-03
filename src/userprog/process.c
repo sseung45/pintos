@@ -98,8 +98,8 @@ start_process (void *file_name_)
 void argument_passing(int argc, char **argv, struct intr_frame *_if){
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] value push
-    _if->esp -= (strlen(argv[i]) + 1)
-    memcpy(_if->esp, argv[i], strlen(argv[i]) + 1)
+    _if->esp -= (strlen(argv[i]) + 1);
+    memcpy(_if->esp, argv[i], strlen(argv[i]) + 1);
     argv[i] = _if->esp;
   }
 
@@ -115,7 +115,7 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
   _if->esp = _if->esp + 4;
 
   _if->esp -= 4; //argc push
-  *(_if->esp) = argc;
+  (int)*(_if->esp) = argc;
 
   _if->esp -= 4; //return address push
   memset(_if->esp, 0, 4);
