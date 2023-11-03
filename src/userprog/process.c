@@ -83,7 +83,7 @@ start_process (void *file_name_)
   if (!success) 
     thread_exit ();
 
-  argument_passing(argc, argv, if_);
+  argument_passing(argc, argv, &if_);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
