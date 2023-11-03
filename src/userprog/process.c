@@ -86,6 +86,8 @@ start_process (void *file_name_)
 
   argument_passing(argc, argv, &if_);
 
+  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
      threads/intr-stubs.S).  Because intr_exit takes all of its
