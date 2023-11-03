@@ -111,11 +111,11 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
     _if->esp -= 4;
-    _if->esp = argv[i];
+    (char*)_if->esp = argv[i];
   }
 
   _if->esp -= 4; //argv address push
-  _if->esp = _if->esp + 4;
+  *(char**)_if->esp = _if->esp + 4;
 
   _if->esp -= 4; //argc push
   *(int*)_if->esp = argc;
