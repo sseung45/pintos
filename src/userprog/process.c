@@ -41,7 +41,7 @@ process_execute (const char *file_name)
   strlcpy (fn_copy, file_name, PGSIZE);
 
   char *ret_ptr, *save_ptr;
-  strlcpy(ret_ptr, fn_copy, PGSIZE)
+  strlcpy(ret_ptr, fn_copy, PGSIZE);
   ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
   /* Create a new thread to execute FILE_NAME. */
