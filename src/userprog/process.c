@@ -101,26 +101,26 @@ start_process (void *file_name_)
 void argument_passing(int argc, char **argv, struct intr_frame *_if){
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] value push
-    (char*)_if->esp -= (strlen(argv[i]) + 1);
+    _if->esp -= (strlen(argv[i]) + 1);
     memcpy(_if->esp, argv[i], strlen(argv[i]) + 1);
-    argv[i] = (char*)_if->esp;
+    argv[i] = _if->esp;
   }
 
-  (char*)_if->esp -= ((int)(char*)_if->esp % 4 + 4); //padding + argv[4]에 0 push
-  memset(_if->esp, 0, (int)(char*)_if->esp % 4 + 4);
+  _if->esp -= ((int)_if->esp % 4 + 4); //padding + argv[4]에 0 push
+  memset(_if->esp, 0, (int)_if->esp % 4 + 4);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
-    (char*)_if->esp -= 4;
-    (char*)_if->esp = argv[i];
+    _if->esp -= 4;
+    _if->esp = argv[i];
   }
 
-  (char*)_if->esp -= 4; //argv address push
-  (char*)_if->esp = *(char**)_if->esp + 4;
+  _if->esp -= 4; //argv address push
+  _if->esp = _if->esp + 4;
 
-  (char*)_if->esp -= 4; //argc push
+  _if->esp -= 4; //argc push
   *(int*)_if->esp = argc;
 
-  (char*)_if->esp -= 4; //return address push
+  _if->esp -= 4; //return address push
   memset(_if->esp, 0, 4);
 }
 
