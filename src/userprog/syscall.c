@@ -50,7 +50,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_EXIT: // 1 arguement
       get_argument(esp, args, 1);
-      exit(*(int *)(esp + 4));
+      exit((int)(args[0]));
       break;
     case SYS_EXEC: // 1 arguement
       get_argument(esp, args, 1);
@@ -192,6 +192,7 @@ int read(int fd, void *buffer, unsigned size) {
 
 int write(int fd, const void *buffer, unsigned size) {
   check_user_address(buffer);
+  //printf("write in +++++++++++++++++++++++++++++++++++++++++\n");
   if (fd == 1) {  // stdout
     putbuf(buffer, size);
     return size;
@@ -243,6 +244,7 @@ void get_argument(int *esp, int *args , int count) {
     check_user_address(esp);
     esp++;
     check_user_address(esp);
-    *(args++) = *esp;
+    *args = *esp;
+    args++;
   }
 }
