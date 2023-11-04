@@ -164,7 +164,6 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  /*
   struct thread *cur = thread_current();
   int exit_status = -1;
   for (struct list_elem *e = list_begin(&(cur->child_list)); e != list_end(&(cur->child_list)); e = list_next(e)) {
@@ -177,9 +176,7 @@ process_wait (tid_t child_tid UNUSED)
       break;
     }
   }
-  return exit_status;*/
-  for(int i=0;i<1000000000;i++);
-  return -1;
+  return exit_status;
 }
 
 /* Free the current process's resources. */
