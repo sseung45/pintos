@@ -44,8 +44,6 @@ syscall_handler (struct intr_frame *f UNUSED)
   uint32_t *esp = f->esp;
   //check_user_address(esp);
 
-  hex_dump(esp, esp, 100, true);
-
   switch (*esp) {
     case SYS_HALT: // 0 arguement
       halt();
