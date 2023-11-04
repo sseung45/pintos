@@ -5,6 +5,9 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "lib/user/syscall.h"
+#include "filesys/filesys.h"
+#include "filesys/file.h"
+#include "threads/synch.h"
 
 static void syscall_handler (struct intr_frame *);
 void halt();
@@ -35,12 +38,12 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-  //printf ("system call!\n");
+  printf("syscall init!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
   //thread_exit ();
 
-  int args[4];
-  int *esp = f->esp;
-  check_user_address(esp);
+  int args[2];
+  uint32_t *esp = f->esp;
+  //check_user_address(esp);
 
   switch (*esp) {
     case SYS_HALT: // 0 arguement
@@ -56,11 +59,11 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_WAIT:
       get_argument(esp, args, 1); // 1 arguement
-      f->eax = wait((pid_t *)(args[0]));
+      f->eax = wait((pid_t)(args[0]));
       break;
     case SYS_CREATE: // 2 arguements
       get_argument(esp, args, 2);
-      f->eax = create((const char *)(args[0]), (const char *)(args[1]));
+      f->eax = create((const char *)(args[0]), (unsigned)(args[1]));
       break;
     case SYS_REMOVE: // 1 arguement
       get_argument(esp, args, 1);
@@ -165,7 +168,7 @@ int filesize(int fd)
 int read(int fd, void *buffer, unsigned size) {
   check_user_address(buffer);
   if (fd == 0) {  // stdin
-    int idx = 0;
+    unsigned idx = 0;
     char w;
     for (; idx < size; idx++) {
       w = input_getc();
