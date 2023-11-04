@@ -82,7 +82,7 @@ start_process (void *file_name_)
   success = load (file_name, &if_.eip, &if_.esp);
   
   argument_passing(argc, argv, &if_);
-  
+
   hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   /* If load failed, quit. */
@@ -115,6 +115,7 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
   _if->esp -= ((int)_if->esp % 4 + 4); //padding + argv[4]에 0 push
   memset(_if->esp, 0, (int)_if->esp % 4 + 4);
 
+  printf("padding: %d", (int)_if->esp % 4);
   printf("************padding + argv[4] push\nesp: %x\n**************\n", (int)_if->esp);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
