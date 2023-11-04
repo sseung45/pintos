@@ -206,7 +206,7 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   sema_up(&(cur->child_lock));
-  file_close(curr->running_file);
+  file_close(cur->running_file);
   sema_down(&(cur->exit_lock));
 }
 
