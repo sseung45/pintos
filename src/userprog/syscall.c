@@ -250,3 +250,11 @@ void get_argument(void *esp, int *arg , int count) {
     sp += 4;
   }
 }
+
+void exit(int status){
+  struct thread *t = thread_current();
+
+  printf("%s: exit(%d)\n", t->name, status);
+
+  thread_exit();
+}
