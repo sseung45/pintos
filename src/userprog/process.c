@@ -203,6 +203,7 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   sema_up(&(cur->child_lock));
+  file_close(cur->running_file);
   sema_down(&(cur->exit_lock));
 }
 
@@ -319,6 +320,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
       goto done; 
     }
 
+  t->running_file = file;
+  file_deny_write(t->running_file);
+
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
       || memcmp (ehdr.e_ident, "\177ELF\1\1\1", 7)
@@ -402,7 +406,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
  done:
   /* We arrive here whether the load is successful or not. */
-  file_close (file);
   return success;
 }
 
