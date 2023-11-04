@@ -224,6 +224,7 @@ void close(int fd) {
   struct file *f = thread_current()->fd[fd];
   if (f == NULL)
     exit(-1);
+  thread_current()->fd[fd] = NULL;
   file_close(f);
 }
 
