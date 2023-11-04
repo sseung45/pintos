@@ -112,9 +112,9 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
     argv[i] = (char*)_if->esp;
   }
   
-  printf("padding: %d", _if->esp % 4);
-  _if->esp -= (_if->esp % 4 + 4); //padding + argv[4]에 0 push
-  memset(_if->esp, 0, _if->esp % 4 + 4);
+  printf("padding: %d", (unsigned int)_if->esp % 4);
+  _if->esp -= ((unsigned int)_if->esp % 4 + 4); //padding + argv[4]에 0 push
+  memset(_if->esp, 0, (unsigned int)_if->esp % 4 + 4);
   printf("************padding + argv[4] push\nesp: %x\n**************\n", (int)_if->esp);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
