@@ -45,6 +45,9 @@ process_execute (const char *file_name)
   strlcpy(ret_ptr, fn_copy, PGSIZE);
   ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
+  if (filesys_open (ret_ptr) == NULL)
+    return -1;
+
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
   palloc_free_page(ret_ptr);
@@ -57,10 +60,13 @@ process_execute (const char *file_name)
   for (struct list_elem* e = list_begin(&(thread_current()->child_list)); e != list_end(&(thread_current()->child_list)); e = list_next(e))
   {
     struct thread* thr = list_entry(e, struct thread, child_elem);
-    if (thr->exit_status == -1)
+    if (thr->exit_status == -1) {
+      //printf("--------------thread: %s, exit_status: %d\n",thr->name, thr->exit_status);
       return process_wait (tid);
+    }
+      
   }
-  
+  //printf("+++++++++++++++++++tid: %d\n", tid);
   return tid;
 }
 
@@ -92,13 +98,15 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
   
-  argument_passing(argc, argv, &if_);
+  if (success)
+    argument_passing(argc, argv, &if_);
 
   //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   palloc_free_page(file_name);
   sema_up(&(thread_current()->parent->load_lock));
   if (!success) {
+    //printf("-------------------------no succ\n");
     thread_exit();
   }
 
@@ -169,13 +177,14 @@ process_wait (tid_t child_tid UNUSED)
   for (struct list_elem *e = list_begin(&(cur->child_list)); e != list_end(&(cur->child_list)); e = list_next(e)) {
     struct thread *thr = list_entry(e, struct thread, child_elem);
     if (thr->tid == child_tid) {
-      exit_status = thr->exit_status;
       sema_down(&(thr->child_lock));
       list_remove(&(thr->child_elem));
+      exit_status = thr->exit_status;
       sema_up(&(thr->exit_lock));
       break;
     }
   }
+  //printf("wait end---------------------------------------------\n");
   return exit_status;
 }
 
@@ -202,6 +211,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  //printf("child lock up!========================================\n");
+  //printf("cur thread: %s\n", cur->name);
   sema_up(&(cur->child_lock));
   file_close(cur->running_file);
   sema_down(&(cur->exit_lock));
