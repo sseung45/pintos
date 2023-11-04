@@ -48,8 +48,19 @@ process_execute (const char *file_name)
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
   palloc_free_page(ret_ptr);
+
+  sema_down(&(thread_current()->load_lock));
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+
+  // ####################################################################################
+  for (struct list_elem* e = list_begin(&(thread_current()->child_list)); e != list_end(&(thread_current()->child_list)); e = list_next(e))
+  {
+    struct thread* thr = list_entry(e, struct thread, child_elem);
+    if (thr->exit_status == -1)
+      return process_wait (tid);
+  }
+  
   return tid;
 }
 
@@ -85,10 +96,11 @@ start_process (void *file_name_)
 
   //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
-  /* If load failed, quit. */
-  palloc_free_page (file_name);
-  if (!success) 
-    thread_exit ();
+  palloc_free_page(file_name);
+  sema_up(&(thread_current()->parent->load_lock));
+  if (!success) {
+    thread_exit();
+  }
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
@@ -152,8 +164,19 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  for(int i = 0; i < 1000000000; i++);
-  return -1;
+  struct thread *cur = thread_current();
+  int exit_status = -1;
+  for (struct list_elem *e = list_begin(&(cur->child_list)); e != list_end(&(cur->child_list)); e = list_next(e)) {
+    struct thread *thr = list_entry(e, struct thread, child_elem);
+    if (thr->tid == child_tid) {
+      exit_status = thr->exit_status;
+      sema_down(&(thr->child_lock));
+      list_remove(&(thr->child_elem));
+      sema_up(&(thr->exit_lock));
+      break;
+    }
+  }
+  return exit_status;
 }
 
 /* Free the current process's resources. */
@@ -179,6 +202,8 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+  sema_up(&(cur->child_lock));
+  sema_down(&(cur->exit_lock));
 }
 
 /* Sets up the CPU for running user code in the current
@@ -502,7 +527,7 @@ setup_stack (void **esp)
     {
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
-        *esp = PHYS_BASE;
+        *esp = PHYS_BASE - 12;
       else
         palloc_free_page (kpage);
     }
