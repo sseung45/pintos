@@ -24,7 +24,7 @@ void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
 void check_user_address(void *addr);
-void get_argument(void *esp, int *arg , int count);
+void get_argument(int *esp, int *arg , int count);
 
 struct lock file_lock;
 
@@ -38,7 +38,6 @@ syscall_init (void)
 static void
 syscall_handler (struct intr_frame *f UNUSED) 
 {
-  printf("syscall init!++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
   //thread_exit ();
 
   int args[2];
@@ -51,7 +50,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_EXIT: // 1 arguement
       get_argument(esp, args, 1);
-      exit(args[0]);
+      exit(*(int *)(esp + 4));
       break;
     case SYS_EXEC: // 1 arguement
       get_argument(esp, args, 1);
@@ -110,13 +109,12 @@ void exit(int status){
   printf("%s: exit(%d)\n", t->name, status);
 
   thread_current()->exit_status = status;
-
+  
   int fd_max = thread_current()->fd_count;
   for (int i = 2; i <= fd_max; i++) {
     if (thread_current()->fd[i] != NULL)
       close(i);
   }
-
   thread_exit();
 }
 
@@ -240,21 +238,11 @@ void check_user_address(void *addr) {
     exit(-1);
 }
 
-void get_argument(void *esp, int *arg , int count) {
-  uint32_t *sp = esp;
-  int cnt = 0;
+void get_argument(int *esp, int *args , int count) {
   for (;count > 0; count--) {
-    check_user_address(sp + 4);
-    arg[cnt] = sp + 4;
-    cnt ++;
-    sp += 4;
+    check_user_address(esp);
+    esp++;
+    check_user_address(esp);
+    *(args++) = *esp;
   }
-}
-
-void exit(int status){
-  struct thread *t = thread_current();
-
-  printf("%s: exit(%d)\n", t->name, status);
-
-  thread_exit();
 }
