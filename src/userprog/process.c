@@ -206,6 +206,7 @@ process_exit (void)
       pagedir_destroy (pd);
     }
   sema_up(&(cur->child_lock));
+  file_close(curr->running_file);
   sema_down(&(cur->exit_lock));
 }
 
@@ -321,6 +322,9 @@ load (const char *file_name, void (**eip) (void), void **esp)
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
+
+  t->running_file = file;
+  file_deny_write(t->running_file);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
