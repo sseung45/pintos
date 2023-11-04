@@ -163,14 +163,15 @@ int open(const char *file) {
   check_user_address(file);
   lock_acquire(&file_lock);
   struct file *open_file = filesys_open(file);
-  lock_release(&file_lock);
   if (open_file == NULL) {
+    lock_release(&file_lock);
     return -1;
   }
 
   int fd_idx = thread_current()->fd_count;
   if (fd_idx >= 128) {
     file_close(open_file);
+    lock_release(&file_lock);
     return -1;
   }
   thread_current()->fd_count += 1;
@@ -180,6 +181,7 @@ int open(const char *file) {
   tmp_file->file = open_file;
   tmp_file->fd = fd_idx;
   list_push_back(&thread_current()->file_list, &tmp_file->elem);
+  lock_release(&file_lock);
   return fd_idx;
 }
 
