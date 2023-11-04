@@ -152,6 +152,7 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
 int
 process_wait (tid_t child_tid UNUSED) 
 {
+  for(int i = 0; i < 1000000000; i++);
   return -1;
 }
 
