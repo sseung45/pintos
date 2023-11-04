@@ -230,7 +230,7 @@ void close(int fd) {
   if (f == NULL)
     exit(-1);
   f = NULL;
-  file_close (f);
+  file_close(f);
 }
 
 void check_user_address(void *addr) {
