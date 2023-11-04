@@ -161,13 +161,17 @@ bool remove(const char *file) {
 
 int open(const char *file) {
   check_user_address(file);
+  lock_acquire(&file_lock);
   struct file *open_file = filesys_open(file);
-  if (open_file == NULL)
+  if (open_file == NULL) {
     return -1;
+    lock_release(&file_lock);
+  }
 
   int fd_idx = thread_current()->fd_count;
   if (fd_idx >= 128) {
     file_close(open_file);
+    lock_release(&file_lock);
     return -1;
   }
   thread_current()->fd_count += 1;
@@ -177,7 +181,7 @@ int open(const char *file) {
   tmp_file->file = open_file;
   tmp_file->fd = fd_idx;
   list_push_back(&thread_current()->file_list, &tmp_file->elem);
-  
+  lock_release(&file_lock);
   return fd_idx;
 }
 
@@ -192,6 +196,7 @@ int filesize(int fd)
 
 int read(int fd, void *buffer, unsigned size) {
   check_user_address(buffer);
+  lock_acquire(&file_lock);
   if (fd == 0) {  // stdin
     unsigned idx = 0;
     char w;
@@ -201,32 +206,40 @@ int read(int fd, void *buffer, unsigned size) {
       if (w == '\0')
         break;
     }
+    lock_release(&file_lock);
     return idx;
   }
-  if (fd == 1)
+  if (fd == 1) {
+    lock_release(&file_lock);
     return -1;
+  }
 
   // fd != 0, 1
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
-  if (f == NULL)
+  if (f == NULL) {
     return -1;
+    lock_release(&file_lock);
+  }
 
-  //lock_acquire(&file_lock);
   int read_size_byte = file_read(f, buffer, size);
-  //lock_release(&file_lock);
+  lock_release(&file_lock);
   return read_size_byte;
 }
 
 int write(int fd, const void *buffer, unsigned size) {
   check_user_address(buffer);
+  lock_acquire(&file_lock);
   //printf("write in +++++++++++++++++++++++++++++++++++++++++\n");
   if (fd == 1) {  // stdout
     putbuf(buffer, size);
+    lock_release(&file_lock);
     return size;
   }
-  if (fd == 0)
+  if (fd == 0) {
+    lock_release(&file_lock);
     return 0;
+  }
 
   // fd != 0, 1
   struct file_info *f_info = search(&thread_current()->file_list, fd);
@@ -234,9 +247,8 @@ int write(int fd, const void *buffer, unsigned size) {
   if (f == NULL)
     return 0;
   
-  //lock_acquire(&file_lock);
   int write_bytes = file_write(f, buffer, size);
-  //lock_release(&file_lock);
+  lock_release(&file_lock);
   return write_bytes;
 }
 
