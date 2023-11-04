@@ -28,6 +28,32 @@ void get_argument(int *esp, int *arg , int count);
 
 struct lock file_lock;
 
+struct file_info {
+  struct file *file;
+  int fd;
+  struct list_elem elem;
+};
+
+struct file_info* search(struct list* file_list, int fd) {
+  for (struct list_elem *e = list_begin (file_list); e != list_end (file_list); e = list_next (e)) {
+    struct file_info *f = list_entry(e, struct file_info, elem);
+    if (f->fd == fd)
+      return f;
+  }
+  return NULL;
+}
+
+void close_files(struct list *file_list) {
+  struct list_elem *e;
+	while(!list_empty(file_list)) {
+		e = list_pop_front(file_list);
+		struct file_info *f = list_entry(e, struct file_info, elem);
+	  file_close(f->file);
+	  list_remove(e);
+	  free(f);
+	}
+}
+
 void
 syscall_init (void) 
 {
@@ -144,15 +170,21 @@ int open(const char *file) {
     file_close(open_file);
     return -1;
   }
+  thread_current()->fd_count += 1;
     
-  thread_current()->fd[fd_idx] = open_file;
-  thread_current()->fd_count++;
+  //thread_current()->fd[fd_idx] = open_file;
+  struct file_info *tmp_file = malloc(sizeof(struct file_info *));
+  tmp_file->file = open_file;
+  tmp_file->fd = fd_idx;
+  list_push_back(&thread_current()->file_list, &tmp_file->elem);
+  
   return fd_idx;
 }
 
 int filesize(int fd)
 {
-  struct file *f = thread_current()->fd[fd];
+  struct file_info *f_info = search(&thread_current()->file_list, fd);
+  struct file *f = f_info->file;
   if (f == NULL)
     exit(-1);
   return file_length(f);
@@ -175,13 +207,14 @@ int read(int fd, void *buffer, unsigned size) {
     return -1;
 
   // fd != 0, 1
-  struct file *f = thread_current()->fd[fd];
+  struct file_info *f_info = search(&thread_current()->file_list, fd);
+  struct file *f = f_info->file;
   if (f == NULL)
     return -1;
 
-  lock_acquire(&file_lock);
+  //lock_acquire(&file_lock);
   int read_size_byte = file_read(f, buffer, size);
-  lock_release(&file_lock);
+  //lock_release(&file_lock);
   return read_size_byte;
 }
 
@@ -196,36 +229,42 @@ int write(int fd, const void *buffer, unsigned size) {
     return 0;
 
   // fd != 0, 1
-  struct file *f = thread_current()->fd[fd];
+  struct file_info *f_info = search(&thread_current()->file_list, fd);
+  struct file *f = f_info->file;
   if (f == NULL)
     return 0;
   
-  lock_acquire(&file_lock);
+  //lock_acquire(&file_lock);
   int write_bytes = file_write(f, buffer, size);
-  lock_release(&file_lock);
+  //lock_release(&file_lock);
   return write_bytes;
 }
 
 void seek(int fd, unsigned position) {
-  struct file *f = thread_current()->fd[fd];
+  struct file_info *f_info = search(&thread_current()->file_list, fd);
+  struct file *f = f_info->file;
   if (f == NULL)
     exit(-1);
   file_seek(f, position);
 }
 
 unsigned tell(int fd) {
-  struct file *f = thread_current()->fd[fd];
+  struct file_info *f_info = search(&thread_current()->file_list, fd);
+  struct file *f = f_info->file;
   if (f == NULL)
     exit(-1);
   return file_tell(f);
 }
 
 void close(int fd) {
-  struct file *f = thread_current()->fd[fd];
+  struct file_info *f_info = search(&thread_current()->file_list, fd);
+  struct file *f = f_info->file;
   if (f == NULL)
     exit(-1);
-  thread_current()->fd[fd] = NULL;
+  //thread_current()->fd[fd] = NULL;
   file_close(f);
+  list_remove(&f_info->elem);
+  free(f_info);
 }
 
 void check_user_address(void *addr) {

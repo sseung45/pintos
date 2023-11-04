@@ -36,8 +36,10 @@ process_execute (const char *file_name)
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
   fn_copy = palloc_get_page (0);
-  if (fn_copy == NULL)
+  if (fn_copy == NULL) {
+    palloc_free_page(fn_copy);
     return TID_ERROR;
+  }
   strlcpy (fn_copy, file_name, PGSIZE);
 
   char *ret_ptr, *save_ptr;
@@ -45,16 +47,19 @@ process_execute (const char *file_name)
   strlcpy(ret_ptr, fn_copy, PGSIZE);
   ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
-  if (filesys_open (ret_ptr) == NULL)
+  if (filesys_open (ret_ptr) == NULL) {
+    palloc_free_page(fn_copy);
+    palloc_free_page(ret_ptr);
     return -1;
+  }
 
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
   palloc_free_page(ret_ptr);
-
-  sema_down(&(thread_current()->load_lock));
   if (tid == TID_ERROR)
-    palloc_free_page (fn_copy); 
+    palloc_free_page (fn_copy);
+
+  sema_down(&(thread_current()->load_lock)); 
 
   // ####################################################################################
   for (struct list_elem* e = list_begin(&(thread_current()->child_list)); e != list_end(&(thread_current()->child_list)); e = list_next(e))
@@ -107,7 +112,7 @@ start_process (void *file_name_)
   sema_up(&(thread_current()->parent->load_lock));
   if (!success) {
     //printf("-------------------------no succ\n");
-    thread_exit();
+    exit(-1);
   }
 
   /* Start the user process by simulating a return from an
@@ -215,6 +220,15 @@ process_exit (void)
   //printf("cur thread: %s\n", cur->name);
   sema_up(&(cur->child_lock));
   file_close(cur->running_file);
+  /*
+  int fd_max = cur->fd_count;
+  for (int i = 2; i < 57; i++) {
+    struct file *f = cur->fd[i];
+    if (f != NULL)
+      file_close(f);
+      //cur->fd[i] = NULL;
+  }*/
+  close_files(&cur->file_list);
   sema_down(&(cur->exit_lock));
 }
 

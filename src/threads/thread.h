@@ -117,7 +117,8 @@ struct thread
     
     // file descriptor, limit: 128
     // fd[0]: stdin, fd[1]: stdout
-    struct file *fd[128];
+    // struct file *fd[128];
+    struct list file_list;
     int fd_count;
   };
 
