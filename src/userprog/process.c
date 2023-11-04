@@ -83,7 +83,7 @@ start_process (void *file_name_)
   
   argument_passing(argc, argv, &if_);
 
-  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
+  //hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
@@ -102,42 +102,42 @@ start_process (void *file_name_)
 
 void argument_passing(int argc, char **argv, struct intr_frame *_if){
 
-  printf("************초기 esp\nesp: %x\n**************\n", (int)_if->esp);
+  //printf("************초기 esp\nesp: %x\n**************\n", (int)_if->esp);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] value push
-    printf("%d\n",(int)strlen(argv[i]) + 1);
+    //printf("%d\n",(int)strlen(argv[i]) + 1);
     _if->esp -= ((int)strlen(argv[i]) + 1);
-    printf("************argv value를 push\nesp: %x\n**************\n", (int)_if->esp);
+    ///printf("************argv value를 push\nesp: %x\n**************\n", (int)_if->esp);
     memcpy(_if->esp, argv[i], (int)strlen(argv[i]) + 1);
     argv[i] = (char*)_if->esp;
   }
   
-  printf("padding: %d", (unsigned int)_if->esp % 4);
+  //printf("padding: %d", (unsigned int)_if->esp % 4);
   _if->esp -= ((unsigned int)_if->esp % 4 + 4); //padding + argv[4]에 0 push
   memset(_if->esp, 0, (unsigned int)_if->esp % 4 + 4);
-  printf("************padding + argv[4] push\nesp: %x\n**************\n", (int)_if->esp);
+  //printf("************padding + argv[4] push\nesp: %x\n**************\n", (int)_if->esp);
 
   for(int i = argc - 1; i >= 0; i--){ //argv[] address push
     _if->esp -= 4;
     *(char**)_if->esp = argv[i];
 
-    printf("************argv[] address push\nesp: %x\n**************\n", (int)_if->esp);
+    //printf("************argv[] address push\nesp: %x\n**************\n", (int)_if->esp);
   }
 
   _if->esp -= 4; //argv address push
   *(char**)_if->esp = _if->esp + 4;
 
-  printf("************argv address push\nesp: %x\n**************\n", (int)_if->esp);
+  //printf("************argv address push\nesp: %x\n**************\n", (int)_if->esp);
 
   _if->esp -= 4; //argc push
   *(int*)_if->esp = argc;
 
-  printf("************argc push\nesp: %x\n**************\n", (int)_if->esp);
+  //printf("************argc push\nesp: %x\n**************\n", (int)_if->esp);
 
   _if->esp -= 4; //return address push
   memset(_if->esp, 0, 4);
 
-  printf("************return address\nesp: %x\n**************\n", (int)_if->esp);
+ // printf("************return address\nesp: %x\n**************\n", (int)_if->esp);
 }
 
 /* Waits for thread TID to die and returns its exit status.  If
@@ -152,7 +152,6 @@ void argument_passing(int argc, char **argv, struct intr_frame *_if){
 int
 process_wait (tid_t child_tid UNUSED) 
 {
-  while(true){}
   return -1;
 }
 
