@@ -67,6 +67,12 @@ start_process (void *file_name_)
   char *ret_ptr, *save_ptr;
 
   ret_ptr = strtok_r(file_name, " ", &save_ptr);
+  
+  while(ret_ptr != NULL){
+    argv[argc] = ret_ptr;
+    argc++;
+    ret_ptr = strtok_r(NULL, " ", &save_ptr);
+  }
 
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
@@ -75,20 +81,14 @@ start_process (void *file_name_)
   if_.eflags = FLAG_IF | FLAG_MBS;
   success = load (file_name, &if_.eip, &if_.esp);
   
-  while(ret_ptr != NULL){
-    argv[argc] = ret_ptr;
-    argc++;
-    ret_ptr = strtok_r(NULL, " ", &save_ptr);
-  }
+  argument_passing(argc, argv, &if_);
+  
+  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   /* If load failed, quit. */
   palloc_free_page (file_name);
   if (!success) 
     thread_exit ();
-
-  argument_passing(argc, argv, &if_);
-
-  hex_dump(if_.esp, if_.esp, PHYS_BASE - if_.esp, true);
 
   /* Start the user process by simulating a return from an
      interrupt, implemented by intr_exit (in
