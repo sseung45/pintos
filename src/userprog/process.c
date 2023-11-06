@@ -47,12 +47,6 @@ process_execute (const char *file_name)
   strlcpy(ret_ptr, fn_copy, PGSIZE);
   ret_ptr = strtok_r(ret_ptr, " ", &save_ptr);
 
-  if (filesys_open (ret_ptr) == NULL) {
-    palloc_free_page(fn_copy);
-    palloc_free_page(ret_ptr);
-    return -1;
-  }
-
   /* Create a new thread to execute FILE_NAME. */
   tid = thread_create (ret_ptr, PRI_DEFAULT, start_process, fn_copy);
   palloc_free_page(ret_ptr);
