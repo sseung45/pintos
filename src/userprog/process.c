@@ -506,24 +506,35 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
       /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
-        return false;
+      //uint8_t *kpage = palloc_get_page (PAL_USER);
+      //if (kpage == NULL)
+      //  return false;
 
       /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+      //if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+      //  {
+      //    palloc_free_page (kpage);
+      //    return false; 
+      //  }
+      //memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
+      //if (!install_page (upage, kpage, writable)) 
+      //  {
+      //    palloc_free_page (kpage);
+      //    return false; 
+      //  }
+      struct page *spte = (struct page *)malloc(sizeof(struct page));
+      if (spte == NULL)
+        return false;
+      spte->type = VM_BIN;
+      spte->vaddr = upage;
+      spte->write_enable = true;
+      spte->file = file;
+      spte->offset = ofs;
+      spte->read_bytes = page_read_bytes;
+      spte->zero_bytes = page_zero_bytes;
+      insert_page(&thread_current()->spt, spte);
 
       /* Advance. */
       read_bytes -= page_read_bytes;
