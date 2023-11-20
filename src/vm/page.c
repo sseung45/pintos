@@ -44,3 +44,14 @@ struct page *find_spte (void *vaddr) {
     else
         return NULL;
 }
+
+void page_destroy (struct hash *page) {
+    hash_destroy(page, page_destroy_func);
+}
+
+// swap table 구현 이후 수정 필요
+// page(spt entry) 할당 해제 구현 필요
+void page_destroy_func (struct hash_elem *e, void *aux) {
+    struct page *spte = hash_entry(e, struct page, helem);
+    free(spte);
+}
