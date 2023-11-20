@@ -529,7 +529,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
         return false;
       spte->type = VM_BIN;
       spte->vaddr = upage;
-      spte->write_enable = true;
+      spte->write_enable = writable;
       spte->file = file;
       spte->offset = ofs;
       spte->read_bytes = page_read_bytes;
