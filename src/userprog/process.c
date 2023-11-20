@@ -17,6 +17,7 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -212,19 +213,13 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  //printf("child lock up!========================================\n");
-  //printf("cur thread: %s\n", cur->name);
+
   sema_up(&(cur->child_lock));
+
   file_close(cur->running_file);
-  /*
-  int fd_max = cur->fd_count;
-  for (int i = 2; i < 57; i++) {
-    struct file *f = cur->fd[i];
-    if (f != NULL)
-      file_close(f);
-      //cur->fd[i] = NULL;
-  }*/
   close_files(&cur->file_list);
+  page_destroy(&cur->spt);
+
   sema_down(&(cur->exit_lock));
 }
 
