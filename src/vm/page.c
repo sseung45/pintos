@@ -1,5 +1,7 @@
 #include <page.h>
 #include "threads/malloc.h"
+#include "threads/thread.h"
+#include "threads/vaddr.h"
 
 void page_init (struct hash *page) {
     hash_init(page, page_hash_func, page_less_func, NULL);
@@ -30,4 +32,15 @@ bool delete_page (struct hash *page, struct page *page_entry) {
         return false;
     free(page_entry);
     return true;
+}
+
+struct page *find_spte (void *vaddr) {
+    struct hash *page = &thread_current()->spt;
+    struct page spte;
+    spte.vaddr = pg_round_down(vaddr);
+    struct hash_elem *elem = hash_find(page, &spte.helem);
+    if (elem)
+        return hash_entry(elem, struct page, helem);
+    else
+        return NULL;
 }

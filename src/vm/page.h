@@ -23,3 +23,4 @@ static int page_hash_func (struct hash_elem *e, void *aux);
 static bool page_less_func (struct hash_elem *a, struct hash_elem *b, void *aux);
 bool insert_page (struct hash *page, struct page *page_entry);
 bool delete_page (struct hash *page, struct page *page_entry);
+struct page *find_spte (void *vaddr);
