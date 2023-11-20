@@ -5,6 +5,7 @@
 #include "threads/interrupt.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "vm/page.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -109,6 +110,10 @@ kill (struct intr_frame *f)
     }
 }
 
+bool handle_page_fault (struct page *spte) {
+
+}
+
 /* Page fault handler.  This is a skeleton that must be filled in
    to implement virtual memory.  Some solutions to project 2 may
    also require modifying this code.
@@ -148,18 +153,28 @@ page_fault (struct intr_frame *f)
   not_present = (f->error_code & PF_P) == 0;
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
+  
+  if (!not_present)
+   exit(-1);
+  struct page *spte = find_spte(fault_addr);
 
-  if (not_present || !user || is_kernel_vaddr(fault_addr))
-    exit(-1);
-
+  // stack growth 기능 추가 필요
+  if (!spte) {
+   if (!is_user_vaddr(fault_addr)) // 조건 추가 필요
+      exit(-1);
+   return;
+  }
+  // handle_page_fault 함수 추가
+  
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
-     which fault_addr refers. */
+     which fault_addr refers.
+
   printf ("Page fault at %p: %s error %s page in %s context.\n",
           fault_addr,
           not_present ? "not present" : "rights violation",
           write ? "writing" : "reading",
           user ? "user" : "kernel");
-  kill (f);
+  kill (f);*/
 }
 
