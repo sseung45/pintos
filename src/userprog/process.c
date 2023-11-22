@@ -17,7 +17,6 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "vm/page.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -605,4 +604,5 @@ bool handle_page_fault (struct page *spte) {
         return false;
       return true;
   }
+  return true;  // not reached
 }

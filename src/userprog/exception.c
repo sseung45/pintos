@@ -6,6 +6,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "vm/page.h"
+#include "userprog/process.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -108,10 +109,6 @@ kill (struct intr_frame *f)
              f->vec_no, intr_name (f->vec_no), f->cs);
       thread_exit ();
     }
-}
-
-bool handle_page_fault (struct page *spte) {
-
 }
 
 /* Page fault handler.  This is a skeleton that must be filled in
