@@ -498,6 +498,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
   file_seek (file, ofs);
   while (read_bytes > 0 || zero_bytes > 0) 
     {
+      printf("read bytes: %d++++++++++++++++++\n", read_bytes);
       /* Calculate how to fill this page.
          We will read PAGE_READ_BYTES bytes from FILE
          and zero the final PAGE_ZERO_BYTES bytes. */
@@ -534,6 +535,9 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       spte->offset = ofs;
       spte->read_bytes = page_read_bytes;
       spte->zero_bytes = page_zero_bytes;
+      printf("load_segment create vaddr: %d\n", upage);
+      printf("load_segment read bytes: %d\n", page_read_bytes);
+      printf("load thr name: %s\n", &thread_current()->name);
       insert_page(&thread_current()->spt, spte);
 
       /* Advance. */
@@ -549,7 +553,6 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-
   uint8_t *kpage;
   bool success = false;
 
@@ -567,9 +570,10 @@ setup_stack (void **esp)
   if (spte == NULL)
     return false;
   memset(spte, 0, sizeof(struct page));
-  spte->type = VM_BIN;
-  spte->vaddr = kpage;
+  spte->type = VM_ANON;
+  spte->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
   spte->write_enable = true;
+  printf("setup stack create vaddr: %d\n", spte->vaddr);
   insert_page(&thread_current()->spt, spte);
 
   return success;
@@ -601,18 +605,20 @@ bool handle_page_fault (struct page *spte) {
   switch(spte->type) {
     case VM_BIN:
       if (!load_file(kpage, spte)) {
-        palloc_free_page (kpage);
         return false;
       }
-      // 현재 lazy loading이 제대로 안되는듯
-      printf("here+++++++++++++++++\n");
       if (!install_page(spte->vaddr, kpage, spte->write_enable)) {
         palloc_free_page (kpage);
         return false;
       }
       printf("finish page fault handling++++++++++++\n");
+      printf("kaddr: %d\n",kpage);
+      printf("vaddr: %d\n",spte->vaddr);
       return true;
+    default:
+      printf("error type num: %d\n",spte->type);
+      return false;
   }
-  printf("Not reached here+++++++++++++++++++++\n");
+  printf("Never reached here+++++++++++++++++++++\n");
   return false;  // not reached
 }

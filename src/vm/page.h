@@ -22,12 +22,13 @@ struct page {
 };
 
 void page_init (struct hash *page);
-static int page_hash_func (struct hash_elem *e, void *aux);
-static bool page_less_func (struct hash_elem *a, struct hash_elem *b, void *aux);
+static unsigned page_hash_func (const struct hash_elem *e, void *aux);
+static bool page_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux);
 bool insert_page (struct hash *page, struct page *page_entry);
 bool delete_page (struct hash *page, struct page *page_entry);
 struct page *find_spte (void *vaddr);
 void page_destroy (struct hash *page);
 void page_destroy_func (struct hash_elem *e, void *aux);
+void check_valid_buffer (void *buffer, unsigned size, void *esp, bool to_write);
 
 #endif

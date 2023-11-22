@@ -153,14 +153,17 @@ page_fault (struct intr_frame *f)
   
   if (!not_present)
    exit(-1);
-  struct page *spte = find_spte(fault_addr);
 
+  printf("new page fault------------------------------------------\n");
+  printf("start search addr: %d\n",fault_addr);
+  struct page *spte = find_spte(fault_addr);
+  
   // stack growth 기능 추가 필요
   if (!spte) {
    if (!is_user_vaddr(fault_addr)) // 조건 추가 필요
       exit(-1);
    printf("no spte exit+++++++++++\n");
-   exit(-1);
+   exit(-1); // stack growth 구현 후 return으로 수정
   }
 
   // handle_page_fault 함수 추가
