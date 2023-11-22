@@ -9,11 +9,11 @@ void page_init (struct hash *page) {
     hash_init(page, page_hash_func, page_less_func, NULL);
 }
 
-static int page_hash_func (struct hash_elem *e, void *aux) {
+static unsigned page_hash_func (const struct hash_elem *e, void *aux) {
     return hash_int(hash_entry(e, struct page, helem)->vaddr);
 }
 
-static bool page_less_func (struct hash_elem *a, struct hash_elem *b, void *aux) {
+static bool page_less_func (const struct hash_elem *a, const struct hash_elem *b, void *aux) {
     if (hash_entry(a, struct page, helem)->vaddr < hash_entry(b, struct page, helem)->vaddr)
         return true;
     else
@@ -65,12 +65,22 @@ void page_destroy_func (struct hash_elem *e, void *aux) {
 }
 
 bool load_file (void *kaddr, struct page *spte) {
-    int bytes = file_read_at(spte->file, kaddr, spte->read_bytes, spte->offset);
+    size_t bytes = file_read_at(spte->file, kaddr, spte->read_bytes, spte->offset);
     if (bytes == spte->read_bytes) {
-        memset((int *)kaddr + spte->read_bytes, 0, spte->zero_bytes);
+        memset((size_t *)kaddr + spte->read_bytes, 0, spte->zero_bytes);
         return true;
     }
     else {
+        palloc_free_page (kaddr);
         return false;
+    }
+}
+
+void check_valid_buffer (void *buffer, unsigned size, void *esp, bool to_write) {
+    int *buffer_ = buffer;
+    for (int i = 0; i < size; i++) {
+        struct page* spte = check_user_address(buffer_ + i);
+        if(spte == NULL || (to_write == true && spte->write_enable == false))
+            exit(-1);
     }
 }

@@ -8,6 +8,7 @@
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "threads/synch.h"
+#include "vm/page.h"
 
 static void syscall_handler (struct intr_frame *);
 void halt();
@@ -23,7 +24,7 @@ int write(int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
-void check_user_address(void *addr);
+struct page *check_user_address(void *addr);
 void get_argument(int *esp, int *arg , int count);
 
 struct lock file_lock;
@@ -104,10 +105,12 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_READ: // 3 arguement
       get_argument(esp, args, 3);
+      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), esp, true);
       f->eax = read((int)(args[0]), (void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_WRITE: // 3 arguement
       get_argument(esp, args, 3);
+      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), esp, false);
       f->eax = write((int)(args[0]), (const void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_SEEK: // 2 arguement
@@ -195,7 +198,7 @@ int filesize(int fd)
 }
 
 int read(int fd, void *buffer, unsigned size) {
-  check_user_address(buffer);
+  //check_user_address(buffer);
   lock_acquire(&file_lock);
   if (fd == 0) {  // stdin
     unsigned idx = 0;
@@ -228,7 +231,7 @@ int read(int fd, void *buffer, unsigned size) {
 }
 
 int write(int fd, const void *buffer, unsigned size) {
-  check_user_address(buffer);
+  //check_user_address(buffer);
   lock_acquire(&file_lock);
   //printf("write in +++++++++++++++++++++++++++++++++++++++++\n");
   if (fd == 1) {  // stdout
@@ -279,10 +282,11 @@ void close(int fd) {
   free(f_info);
 }
 
-void check_user_address(void *addr) {
+struct page *check_user_address(void *addr) {
   // 포인터가 user 영역 주소를 가리키는지 확인
   if (is_kernel_vaddr(addr) || addr == NULL)
     exit(-1);
+  return find_spte(addr);
 }
 
 void get_argument(int *esp, int *args , int count) {
