@@ -595,5 +595,14 @@ install_page (void *upage, void *kpage, bool writable)
 }
 
 bool handle_page_fault (struct page *spte) {
-  ;
+  uint8_t *kpage;
+  kpage = palloc_get_page (PAL_USER);
+  switch(spte->type) {
+    case VM_BIN:
+      if (!load_file(kpage, spte))
+        return false;
+      if (!install_page(spte->vaddr, kpage, spte->write_enable));
+        return false;
+      return true;
+  }
 }
