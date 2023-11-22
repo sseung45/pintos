@@ -526,6 +526,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       struct page *spte = (struct page *)malloc(sizeof(struct page));
       if (spte == NULL)
         return false;
+      memset(spte, 0, sizeof(struct page));
       spte->type = VM_BIN;
       spte->vaddr = upage;
       spte->write_enable = writable;
@@ -564,7 +565,8 @@ setup_stack (void **esp)
   
   struct page *spte = (struct page *)malloc(sizeof(struct page));
   if (spte == NULL)
-  return false;
+    return false;
+  memset(spte, 0, sizeof(struct page));
   spte->type = VM_BIN;
   spte->vaddr = kpage;
   spte->write_enable = true;
@@ -598,11 +600,19 @@ bool handle_page_fault (struct page *spte) {
   kpage = palloc_get_page (PAL_USER);
   switch(spte->type) {
     case VM_BIN:
-      if (!load_file(kpage, spte))
+      if (!load_file(kpage, spte)) {
+        palloc_free_page (kpage);
         return false;
-      if (!install_page(spte->vaddr, kpage, spte->write_enable));
+      }
+      // 현재 lazy loading이 제대로 안되는듯
+      printf("here+++++++++++++++++\n");
+      if (!install_page(spte->vaddr, kpage, spte->write_enable)) {
+        palloc_free_page (kpage);
         return false;
+      }
+      printf("finish page fault handling++++++++++++\n");
       return true;
   }
-  return true;  // not reached
+  printf("Not reached here+++++++++++++++++++++\n");
+  return false;  // not reached
 }

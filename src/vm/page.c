@@ -41,10 +41,16 @@ struct page *find_spte (void *vaddr) {
     struct page spte;
     spte.vaddr = pg_round_down(vaddr);
     struct hash_elem *elem = hash_find(page, &spte.helem);
-    if (elem)
+    if (elem) {
+        printf("cur thread name: %s\n",&thread_current()->name);
+        printf("find spte+++++++++++\n");
         return hash_entry(elem, struct page, helem);
-    else
+    }
+    else {
+        printf("cur thread name: %s\n",&thread_current()->name);
+        printf("cannot find spte++++++++++++++++++\n");
         return NULL;
+    }
 }
 
 void page_destroy (struct hash *page) {

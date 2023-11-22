@@ -159,8 +159,10 @@ page_fault (struct intr_frame *f)
   if (!spte) {
    if (!is_user_vaddr(fault_addr)) // 조건 추가 필요
       exit(-1);
-   return;
+   printf("no spte exit+++++++++++\n");
+   exit(-1);
   }
+
   // handle_page_fault 함수 추가
   if (!handle_page_fault(spte))
    exit(-1);
