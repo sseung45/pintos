@@ -549,6 +549,7 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
+
   uint8_t *kpage;
   bool success = false;
 
@@ -561,6 +562,15 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+  
+  struct page *spte = (struct page *)malloc(sizeof(struct page));
+  if (spte == NULL)
+  return false;
+  spte->type = VM_BIN;
+  spte->vaddr = kpage;
+  spte->write_enable = true;
+  insert_page(&thread_current()->spt, spte);
+
   return success;
 }
 
