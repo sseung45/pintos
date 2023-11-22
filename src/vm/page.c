@@ -2,6 +2,8 @@
 #include "threads/malloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "filesys/file.h"
+#include <string.h>
 
 void page_init (struct hash *page) {
     hash_init(page, page_hash_func, page_less_func, NULL);
@@ -54,4 +56,15 @@ void page_destroy (struct hash *page) {
 void page_destroy_func (struct hash_elem *e, void *aux) {
     struct page *spte = hash_entry(e, struct page, helem);
     free(spte);
+}
+
+bool load_file (void *kaddr, struct page *spte) {
+    int bytes = file_read_at(spte->file, kaddr, spte->read_bytes, spte->offset);
+    if (bytes == spte->read_bytes) {
+        memset((int *)kaddr + spte->read_bytes, 0, spte->zero_bytes);
+        return true;
+    }
+    else {
+        return false;
+    }
 }
