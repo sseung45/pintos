@@ -162,6 +162,8 @@ page_fault (struct intr_frame *f)
    return;
   }
   // handle_page_fault 함수 추가
+  if (!handle_page_fault(spte))
+   exit(-1);
   
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
