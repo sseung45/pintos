@@ -42,13 +42,9 @@ struct page *find_spte (void *vaddr) {
     spte.vaddr = pg_round_down(vaddr);
     struct hash_elem *elem = hash_find(page, &spte.helem);
     if (elem) {
-        printf("cur thread name: %s\n",&thread_current()->name);
-        printf("find spte+++++++++++\n");
         return hash_entry(elem, struct page, helem);
     }
     else {
-        printf("cur thread name: %s\n",&thread_current()->name);
-        printf("cannot find spte++++++++++++++++++\n");
         return NULL;
     }
 }
@@ -66,13 +62,11 @@ void page_destroy_func (struct hash_elem *e, void *aux) {
 
 bool load_file (void *kaddr, struct page *spte) {
     size_t bytes = file_read_at(spte->file, kaddr, spte->read_bytes, spte->offset);
-    if (bytes == spte->read_bytes) {
-        memset((size_t *)kaddr + spte->read_bytes, 0, spte->zero_bytes);
-        return true;
+    if (bytes != spte->read_bytes) {
+        return false;
     }
     else {
-        palloc_free_page (kaddr);
-        return false;
+        return true;
     }
 }
 
