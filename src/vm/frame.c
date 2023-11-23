@@ -1,4 +1,4 @@
-#include <frame.h>
+#include "vm/frame.h"
 #include "threads/synch.h"
 
 struct list frame_list;
@@ -25,23 +25,24 @@ void delete_frame (struct frame *frame) {
         list_remove(&frame->elem);
 }
 
-static struct list_elem *get_next_clock_ptr () {
+static struct list_elem *get_next_clock_ptr (void) {
     ASSERT (lock_held_by_current_thread(&frame_lock));
     if (clock_ptr == NULL)
         return NULL;
 
     if (clock_ptr == list_end(&frame_list))
         clock_ptr = list_begin(&frame_list);
-    else {
+    else
         clock_ptr = list_next(clock_ptr);
     
     return clock_ptr;
 }
 
-struct frame *alloc_frame(enum palloc_flags flag) {
-    ;
+
+struct frame *alloc_frame (enum palloc_flags flag) {
+    
 }
 
-void free_frame(void *kaddr) {
-    ;
+void free_frame (void *kaddr) {
+    
 }
