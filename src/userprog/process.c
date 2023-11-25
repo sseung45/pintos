@@ -90,6 +90,8 @@ start_process (void *file_name_)
     ret_ptr = strtok_r(NULL, " ", &save_ptr);
   }
 
+  page_init(&thread_current()->spt);
+
   /* Initialize interrupt frame and load executable. */
   memset (&if_, 0, sizeof if_);
   if_.gs = if_.fs = if_.es = if_.ds = if_.ss = SEL_UDSEG;
@@ -210,19 +212,13 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-  //printf("child lock up!========================================\n");
-  //printf("cur thread: %s\n", cur->name);
+
   sema_up(&(cur->child_lock));
+
   file_close(cur->running_file);
-  /*
-  int fd_max = cur->fd_count;
-  for (int i = 2; i < 57; i++) {
-    struct file *f = cur->fd[i];
-    if (f != NULL)
-      file_close(f);
-      //cur->fd[i] = NULL;
-  }*/
   close_files(&cur->file_list);
+  page_destroy(&cur->spt);
+
   sema_down(&(cur->exit_lock));
 }
 
@@ -509,29 +505,42 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
       size_t page_zero_bytes = PGSIZE - page_read_bytes;
 
       /* Get a page of memory. */
-      uint8_t *kpage = palloc_get_page (PAL_USER);
-      if (kpage == NULL)
-        return false;
+      //uint8_t *kpage = palloc_get_page (PAL_USER);
+      //if (kpage == NULL)
+      //  return false;
 
       /* Load this page. */
-      if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
-      memset (kpage + page_read_bytes, 0, page_zero_bytes);
+      //if (file_read (file, kpage, page_read_bytes) != (int) page_read_bytes)
+      //  {
+      //    palloc_free_page (kpage);
+      //    return false; 
+      //  }
+      //memset (kpage + page_read_bytes, 0, page_zero_bytes);
 
       /* Add the page to the process's address space. */
-      if (!install_page (upage, kpage, writable)) 
-        {
-          palloc_free_page (kpage);
-          return false; 
-        }
+      //if (!install_page (upage, kpage, writable)) 
+      //  {
+      //    palloc_free_page (kpage);
+      //    return false; 
+      //  }
+      struct page *spte = (struct page *)malloc(sizeof(struct page));
+      if (spte == NULL)
+        return false;
+      memset(spte, 0, sizeof(struct page));
+      spte->type = VM_BIN;
+      spte->vaddr = upage;
+      spte->write_enable = writable;
+      spte->file = file;
+      spte->offset = ofs;
+      spte->read_bytes = page_read_bytes;
+      spte->zero_bytes = page_zero_bytes;
+      insert_page(&thread_current()->spt, spte);
 
       /* Advance. */
       read_bytes -= page_read_bytes;
       zero_bytes -= page_zero_bytes;
       upage += PGSIZE;
+      ofs += page_read_bytes;
     }
   return true;
 }
@@ -553,6 +562,17 @@ setup_stack (void **esp)
       else
         palloc_free_page (kpage);
     }
+  
+  struct page *spte = (struct page *)malloc(sizeof(struct page));
+  if (spte == NULL)
+    return false;
+  memset(spte, 0, sizeof(struct page));
+  spte->type = VM_ANON;
+  spte->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
+  spte->write_enable = true;
+  //printf("setup stack create vaddr: %d\n", spte->vaddr);
+  insert_page(&thread_current()->spt, spte);
+
   return success;
 }
 
@@ -574,4 +594,25 @@ install_page (void *upage, void *kpage, bool writable)
      address, then map our page there. */
   return (pagedir_get_page (t->pagedir, upage) == NULL
           && pagedir_set_page (t->pagedir, upage, kpage, writable));
+}
+
+bool handle_page_fault (struct page *spte) {
+  uint8_t *kpage;
+  kpage = palloc_get_page (PAL_USER);
+  switch(spte->type) {
+    case VM_BIN:
+      if (!load_file(kpage, spte)) {
+        palloc_free_page (kpage);
+        return false;
+      }
+      memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
+      if (!install_page(spte->vaddr, kpage, spte->write_enable)) {
+        palloc_free_page (kpage);
+        return false;
+      }
+      return true;
+    default:
+      return false;
+  }
+  return false;  // not reached
 }
