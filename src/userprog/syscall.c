@@ -105,12 +105,12 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_READ: // 3 arguement
       get_argument(esp, args, 3);
-      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), esp, true);
+      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), f->esp, true);
       f->eax = read((int)(args[0]), (void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_WRITE: // 3 arguement
       get_argument(esp, args, 3);
-      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), esp, false);
+      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), f->esp, false);
       f->eax = write((int)(args[0]), (const void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_SEEK: // 2 arguement
@@ -198,7 +198,7 @@ int filesize(int fd)
 }
 
 int read(int fd, void *buffer, unsigned size) {
-  //check_user_address(buffer);
+  check_user_address(buffer);
   lock_acquire(&file_lock);
   if (fd == 0) {  // stdin
     unsigned idx = 0;
@@ -231,7 +231,8 @@ int read(int fd, void *buffer, unsigned size) {
 }
 
 int write(int fd, const void *buffer, unsigned size) {
-  //check_user_address(buffer);
+  check_user_address(buffer);
+
   lock_acquire(&file_lock);
   //printf("write in +++++++++++++++++++++++++++++++++++++++++\n");
   if (fd == 1) {  // stdout

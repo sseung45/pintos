@@ -71,9 +71,8 @@ bool load_file (void *kaddr, struct page *spte) {
 }
 
 void check_valid_buffer (void *buffer, unsigned size, void *esp, bool to_write) {
-    int *buffer_ = buffer;
     for (int i = 0; i < size; i++) {
-        struct page* spte = check_user_address(buffer_ + i);
+        struct page* spte = check_user_address(buffer + i);
         if(spte == NULL || (to_write == true && spte->write_enable == false))
             exit(-1);
     }
