@@ -17,11 +17,12 @@
 #include "threads/palloc.h"
 #include "threads/thread.h"
 #include "threads/vaddr.h"
+#include "userprog/syscall.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
 void argument_passing(int argc, char **argv, struct intr_frame *_if);
-
+extern struct lock file_lock;
 
 /* Starts a new thread running a user program loaded from
    FILENAME.  The new thread may be scheduled (and may even exit)
@@ -328,15 +329,18 @@ load (const char *file_name, void (**eip) (void), void **esp)
   process_activate ();
 
   /* Open executable file. */
+  lock_acquire (&file_lock);
   file = filesys_open (file_name);
   if (file == NULL) 
     {
+      lock_release (&file_lock);
       printf ("load: %s: open failed\n", file_name);
       goto done; 
     }
 
   t->running_file = file;
   file_deny_write(t->running_file);
+  lock_release (&file_lock);
 
   /* Read and verify executable header. */
   if (file_read (file, &ehdr, sizeof ehdr) != sizeof ehdr
