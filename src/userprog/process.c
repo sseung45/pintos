@@ -559,8 +559,10 @@ setup_stack (void **esp)
       success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
       if (success)
         *esp = PHYS_BASE;
-      else
+      else {
         palloc_free_page (kpage);
+        return success;
+      }
     }
   
   struct page *spte = (struct page *)malloc(sizeof(struct page));
@@ -608,7 +610,6 @@ bool handle_page_fault (struct page *spte) {
       memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
       if (!install_page(spte->vaddr, kpage, spte->write_enable)) {
         palloc_free_page (kpage);
-        return false;
       }
       return true;
     default:

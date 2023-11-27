@@ -105,12 +105,12 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_READ: // 3 arguement
       get_argument(esp, args, 3);
-      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), esp, true);
+      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), f->esp, true);
       f->eax = read((int)(args[0]), (void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_WRITE: // 3 arguement
       get_argument(esp, args, 3);
-      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), esp, false);
+      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), f->esp, false);
       f->eax = write((int)(args[0]), (const void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_SEEK: // 2 arguement
@@ -168,6 +168,7 @@ int open(const char *file) {
   struct file *open_file = filesys_open(file);
   if (open_file == NULL) {
     lock_release(&file_lock);
+    printf("---%s) open 1 ---------------------\n", thread_current()->name);
     return -1;
   }
 
@@ -175,6 +176,7 @@ int open(const char *file) {
   if (fd_idx >= 128) {
     file_close(open_file);
     lock_release(&file_lock);
+    printf("open 2 ---------------------\n");
     return -1;
   }
   thread_current()->fd_count += 1;
@@ -198,7 +200,7 @@ int filesize(int fd)
 }
 
 int read(int fd, void *buffer, unsigned size) {
-  //check_user_address(buffer);
+  check_user_address(buffer);
   lock_acquire(&file_lock);
   if (fd == 0) {  // stdin
     unsigned idx = 0;
@@ -231,7 +233,8 @@ int read(int fd, void *buffer, unsigned size) {
 }
 
 int write(int fd, const void *buffer, unsigned size) {
-  //check_user_address(buffer);
+  check_user_address(buffer);
+
   lock_acquire(&file_lock);
   //printf("write in +++++++++++++++++++++++++++++++++++++++++\n");
   if (fd == 1) {  // stdout
