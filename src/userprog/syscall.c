@@ -168,7 +168,6 @@ int open(const char *file) {
   struct file *open_file = filesys_open(file);
   if (open_file == NULL) {
     lock_release(&file_lock);
-    printf("---%s) open 1 ---------------------\n", thread_current()->name);
     return -1;
   }
 
@@ -176,7 +175,6 @@ int open(const char *file) {
   if (fd_idx >= 128) {
     file_close(open_file);
     lock_release(&file_lock);
-    printf("open 2 ---------------------\n");
     return -1;
   }
   thread_current()->fd_count += 1;

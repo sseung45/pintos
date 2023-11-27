@@ -7,6 +7,7 @@
 #include "threads/vaddr.h"
 #include "vm/page.h"
 #include "userprog/process.h"
+#include "userprog/syscall.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
