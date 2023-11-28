@@ -608,6 +608,7 @@ bool handle_page_fault (struct page *spte) {
   kpage = palloc_get_page (PAL_USER);
   switch(spte->type) {
     case VM_BIN:
+    case VM_FILE:
       if (!load_file(kpage, spte)) {
         palloc_free_page (kpage);
         return false;
