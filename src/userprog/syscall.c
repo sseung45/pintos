@@ -7,6 +7,8 @@
 #include "filesys/file.h"
 #include "threads/synch.h"
 #include "userprog/process.h"
+#include "userprog/pagedir.h"
+
 static void syscall_handler (struct intr_frame *);
 
 struct lock file_lock;
@@ -352,7 +354,24 @@ void munmap(mapid_t map_id) {
   if (mmap_file == NULL)
     return;
   
+  // mmap_file의 spte_list에 존재하는 모든 spte 제거
+  // spte가 물리 페이지에 존재하고, dirty한 경우 disk에 기록
+  struct list_elem *e = list_begin(&mmap_file->spte_list);
+  while (e != list_end(&mmap_file->spte_list)) {
+    struct page *spte = list_entry(e, struct page, mmap_elem);
+    if (spte->is_loaded && pagedir_is_dirty(thread_current()->pagedir, spte->vaddr)) {
+      size_t bytes = file_write_at(spte->file, spte->vaddr, spte->read_bytes, spte->offset);
+      if (bytes != spte->read_bytes)
+        NOT_REACHED();  // panic
+      palloc_free_page (spte->vaddr);  // frame table 구현 후 수정
+    }
+    spte->is_loaded = false;
+    delete_page(&thread_current()->spt, spte);
+    e = list_remove(e);
+  }
 
+  list_remove(&mmap_file->elem);
+  free(mmap_file);
 }
 
 // 현재 thread의 mmap_list에서 map_id에 해당하는 mmap file 찾아서 리턴
