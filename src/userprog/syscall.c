@@ -111,7 +111,7 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_MMAP: // 2 arguement
       get_argument(esp, args, 2);
-      mmap((int)(args[0]),(void *)(args[1]));
+      f->eax = mmap((int)(args[0]),(void *)(args[1]));
       break;
     case SYS_MUNMAP: // 1 arguement
       get_argument(esp, args, 1);
@@ -303,9 +303,10 @@ int mmap(int fd, void *addr) {
   if (mmap_file == NULL)
     return -1;
   memset(mmap_file, 0, sizeof(struct mmap_file));
+  list_init(&mmap_file->spte_list);
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
-  if (f == NULL)
+  if (f == NULL || f_info->fd == 0 || f_info->fd == 1)
     return -1;
   
   // 현재 thread의 mmap_list에 mmap file 추가
@@ -316,8 +317,9 @@ int mmap(int fd, void *addr) {
 
   // file을 메모리로 load
   size_t ofs = 0;
-  int length = file_length(mmap_file->file);
-  size_t read_bytes = length;
+  size_t read_bytes = file_length(mmap_file->file);
+  if (read_bytes == 0)
+    return -1;
   //size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
   while (read_bytes > 0) {
     if (find_spte(addr) != NULL)
@@ -328,7 +330,7 @@ int mmap(int fd, void *addr) {
 
     struct page *spte = (struct page *)malloc(sizeof(struct page));
     if (spte == NULL)
-      return false;
+      return -1;
     memset(spte, 0, sizeof(struct page));
     spte->type = VM_FILE;
     spte->vaddr = addr;
@@ -361,12 +363,15 @@ void munmap(mapid_t map_id) {
     struct page *spte = list_entry(e, struct page, mmap_elem);
     if (spte->is_loaded && pagedir_is_dirty(thread_current()->pagedir, spte->vaddr)) {
       size_t bytes = file_write_at(spte->file, spte->vaddr, spte->read_bytes, spte->offset);
-      if (bytes != spte->read_bytes)
+      if (bytes != spte->read_bytes) {
+        printf("panic in munmap func+++++++++++++=\n");
         NOT_REACHED();  // panic
-      palloc_free_page (spte->vaddr);  // frame table 구현 후 수정
+      }
+      //palloc_free_page (spte->vaddr);  // frame table 구현 후 수정
     }
     spte->is_loaded = false;
     delete_page(&thread_current()->spt, spte);
+    
     e = list_remove(e);
   }
 

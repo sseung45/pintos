@@ -197,6 +197,17 @@ process_exit (void)
   struct thread *cur = thread_current ();
   uint32_t *pd;
 
+  sema_up(&(cur->child_lock));
+
+  close_files(&cur->file_list);
+  // mmap에 대한 spte 해제
+  for (mapid_t map_id = 1; map_id < cur->map_id_count; map_id++)
+    munmap(map_id);
+  page_destroy(&cur->spt);
+  file_close(cur->running_file);
+
+  sema_down(&(cur->exit_lock));
+
   /* Destroy the current process's page directory and switch back
      to the kernel-only page directory. */
   pd = cur->pagedir;
@@ -213,17 +224,6 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
-
-  sema_up(&(cur->child_lock));
-
-  file_close(cur->running_file);
-  close_files(&cur->file_list);
-  page_destroy(&cur->spt);
-  // mmap에 대한 spte 해제
-  for (mapid_t map_id = 1; map_id < cur->map_id_count; map_id++)
-    munmap(map_id);
-
-  sema_down(&(cur->exit_lock));
 }
 
 /* Sets up the CPU for running user code in the current
@@ -567,7 +567,7 @@ setup_stack (void **esp)
       if (success)
         *esp = PHYS_BASE;
       else {
-        palloc_free_page (kpage);
+        //palloc_free_page (kpage);
         return success;
       }
     }
@@ -613,12 +613,12 @@ bool handle_page_fault (struct page *spte) {
     case VM_BIN:
     case VM_FILE:
       if (!load_file(kpage, spte)) {
-        palloc_free_page (kpage);
+        //palloc_free_page (kpage);
         return false;
       }
       memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
       if (!install_page(spte->vaddr, kpage, spte->write_enable)) {
-        palloc_free_page (kpage);
+        //palloc_free_page (kpage);
       }
       spte->is_loaded = true;
       return true;

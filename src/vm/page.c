@@ -32,7 +32,7 @@ bool insert_page (struct hash *page, struct page *page_entry) {
 bool delete_page (struct hash *page, struct page *page_entry) {
     if (!hash_delete(page, &page_entry->helem))
         return false;
-    free(page_entry);
+    //free(page_entry);
     return true;
 }
 
@@ -57,6 +57,7 @@ void page_destroy (struct hash *page) {
 // page(spt entry) 할당 해제 구현 필요
 void page_destroy_func (struct hash_elem *e, void *aux) {
     struct page *spte = hash_entry(e, struct page, helem);
+    //palloc_free_page(spte->vaddr);
     free(spte);
 }
 
