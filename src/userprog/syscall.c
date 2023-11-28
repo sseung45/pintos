@@ -2,30 +2,14 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
-#include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "lib/user/syscall.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "threads/synch.h"
-#include "vm/page.h"
+#include "userprog/process.h"
+#include "userprog/pagedir.h"
 
 static void syscall_handler (struct intr_frame *);
-void halt();
-void exit(int status);
-pid_t exec(const char *cmdline);
-int wait(pid_t pid);
-bool create(const char *file, unsigned initial_size);
-bool remove(const char *file);
-int open(const char *file);
-int filesize(int fd);
-int read(int fd, void *buffer, unsigned size);
-int write(int fd, const void *buffer, unsigned size);
-void seek(int fd, unsigned position);
-unsigned tell(int fd);
-void close(int fd);
-struct page *check_user_address(void *addr);
-void get_argument(int *esp, int *arg , int count);
 
 //memory mapped file
 mapid_t mmap (int fd, void *addr);
@@ -128,6 +112,14 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_CLOSE: // 1 arguement
       get_argument(esp, args, 1);
       close((int)(args[0]));
+      break;
+    case SYS_MMAP: // 2 arguement
+      get_argument(esp, args, 2);
+      f->eax = mmap((int)(args[0]),(void *)(args[1]));
+      break;
+    case SYS_MUNMAP: // 1 arguement
+      get_argument(esp, args, 1);
+      munmap((mapid_t)(args[0]));
       break;
   }
 }
@@ -302,4 +294,102 @@ void get_argument(int *esp, int *args , int count) {
     *args = *esp;
     args++;
   }
+}
+
+// 성공 시 map_id 리턴, 실패 시 -1 리턴
+int mmap(int fd, void *addr) {
+  // addr 시작점이 page 단위 정렬 안 되었을 경우 page 단위로 접근 불가함
+  if (addr == NULL || is_kernel_vaddr(addr) || pg_round_down (addr) != addr)
+    return -1;
+
+  // memory mapping할 파일 탐색
+  struct mmap_file *mmap_file = (struct mmap_file *)malloc(sizeof(struct mmap_file));
+  if (mmap_file == NULL)
+    return -1;
+  memset(mmap_file, 0, sizeof(struct mmap_file));
+  list_init(&mmap_file->spte_list);
+  struct file_info *f_info = search(&thread_current()->file_list, fd);
+  struct file *f = f_info->file;
+  if (f == NULL || f_info->fd == 0 || f_info->fd == 1)
+    return -1;
+  
+  // 현재 thread의 mmap_list에 mmap file 추가
+  mmap_file->file = file_reopen(f);
+  mmap_file->map_id = thread_current()->map_id_count;
+  thread_current()->map_id_count += 1;
+  list_push_back(&thread_current()->mmap_list, &mmap_file->elem);
+
+  // file을 메모리로 load
+  size_t ofs = 0;
+  size_t read_bytes = file_length(mmap_file->file);
+  if (read_bytes == 0)
+    return -1;
+  //size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
+  while (read_bytes > 0) {
+    if (find_spte(addr) != NULL)
+      return -1;
+
+    size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+    //size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+    struct page *spte = (struct page *)malloc(sizeof(struct page));
+    if (spte == NULL)
+      return -1;
+    memset(spte, 0, sizeof(struct page));
+    spte->type = VM_FILE;
+    spte->vaddr = addr;
+    spte->write_enable = true;
+    spte->file = mmap_file->file;
+    spte->offset = ofs;
+    spte->read_bytes = page_read_bytes;
+    spte->zero_bytes = 0;
+    insert_page(&thread_current()->spt, spte);
+    list_push_back(&mmap_file->spte_list, &spte->mmap_elem);
+
+    /* Advance. */
+    read_bytes -= page_read_bytes;
+    //zero_bytes -= page_zero_bytes;
+    addr += PGSIZE;
+    ofs += page_read_bytes;
+  }
+  return mmap_file->map_id;
+}
+
+void munmap(mapid_t map_id) {
+  struct mmap_file *mmap_file = find_mmap_file(map_id);
+  if (mmap_file == NULL)
+    return;
+  
+  // mmap_file의 spte_list에 존재하는 모든 spte 제거
+  // spte가 물리 페이지에 존재하고, dirty한 경우 disk에 기록
+  struct list_elem *e = list_begin(&mmap_file->spte_list);
+  while (e != list_end(&mmap_file->spte_list)) {
+    struct page *spte = list_entry(e, struct page, mmap_elem);
+    if (spte->is_loaded && pagedir_is_dirty(thread_current()->pagedir, spte->vaddr)) {
+      size_t bytes = file_write_at(spte->file, spte->vaddr, spte->read_bytes, spte->offset);
+      if (bytes != spte->read_bytes) {
+        printf("panic in munmap func+++++++++++++=\n");
+        NOT_REACHED();  // panic
+      }
+      //palloc_free_page (spte->vaddr);  // frame table 구현 후 수정
+    }
+    spte->is_loaded = false;
+    delete_page(&thread_current()->spt, spte);
+    
+    e = list_remove(e);
+  }
+
+  list_remove(&mmap_file->elem);
+  free(mmap_file);
+}
+
+// 현재 thread의 mmap_list에서 map_id에 해당하는 mmap file 찾아서 리턴
+struct mmap_file *find_mmap_file(int map_id) {
+  struct thread *t = thread_current();
+  for (struct list_elem *e = list_begin(&t->mmap_list); e != list_end(&t->mmap_list); e = list_next(e)) {
+    struct mmap_file *f = list_entry(e, struct mmap_file, elem);
+    if (f->map_id == map_id)
+      return f;
+  }
+  return NULL;
 }

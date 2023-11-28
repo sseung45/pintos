@@ -13,12 +13,21 @@ struct page {
     void *vaddr;
     bool write_enable;
     struct file* file;
-    struct list_elem fmmap_list;
+    struct list_elem mmap_elem;
+    bool is_loaded;
     size_t offset;
     size_t read_bytes;
     size_t zero_bytes;
     size_t swap_table;
     struct hash_elem helem;
+};
+
+// mapping된 file의 정보를 저장하는 구조체
+struct mmap_file {
+    struct file* file;      // mmap_file의 file 객체
+    unsigned map_id;        // mmap_file의 id
+    struct list_elem elem;  // mmap_file list element
+    struct list spte_list;  // mmap_file에 해당하는 모든 spte
 };
 
 void page_init (struct hash *page);

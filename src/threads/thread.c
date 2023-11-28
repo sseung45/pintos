@@ -477,10 +477,12 @@ init_thread (struct thread *t, const char *name, int priority)
   sema_init (&(t->exit_lock), 0);
   list_init (&(t->child_list));
   list_init (&(t->file_list));
+  list_init (&(t->mmap_list));
   list_push_back (&(running_thread()->child_list), &(t->child_elem));
   //for (int i = 0; i < 128; i++)
   //  t->fd[i] = NULL;
   t->fd_count = 2;
+  t->map_id_count = 1;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

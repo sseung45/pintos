@@ -122,7 +122,9 @@ struct thread
     struct list file_list;
     int fd_count;
 
-    struct hash spt;
+    struct hash spt;        // Supplemental Page Table 관리
+    struct list mmap_list;  // memory mapping된 file 관리
+    int map_id_count;       // mmap_id 지정할때 사용 
   };
 
 /* If false (default), use round-robin scheduler.

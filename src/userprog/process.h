@@ -10,5 +10,7 @@ void process_exit (void);
 void process_activate (void);
 
 bool handle_page_fault (struct page *spte);
+struct mmap_file *find_mmap_file(int map_id);
+void do_mummap (struct mmap_file *mmap_file);
 
 #endif /* userprog/process.h */
