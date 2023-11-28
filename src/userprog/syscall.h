@@ -1,7 +1,27 @@
 #ifndef USERPROG_SYSCALL_H
 #define USERPROG_SYSCALL_H
+#include "threads/thread.h"
+#include "lib/user/syscall.h"
+#include "vm/page.h"
 
 void syscall_init (void);
-void exit (int);
+void halt();
+void exit(int status);
+pid_t exec(const char *cmdline);
+int wait(pid_t pid);
+bool create(const char *file, unsigned initial_size);
+bool remove(const char *file);
+int open(const char *file);
+int filesize(int fd);
+int read(int fd, void *buffer, unsigned size);
+int write(int fd, const void *buffer, unsigned size);
+void seek(int fd, unsigned position);
+unsigned tell(int fd);
+void close(int fd);
+struct page *check_user_address(void *addr);
+void get_argument(int *esp, int *arg , int count);
+int mmap(int fd, void *addr);
+void munmap(mapid_t map_id);
+struct mmap_file *find_mmap_file(int map_id);
 
 #endif /* userprog/syscall.h */

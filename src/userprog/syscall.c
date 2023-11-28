@@ -2,32 +2,12 @@
 #include <stdio.h>
 #include <syscall-nr.h>
 #include "threads/interrupt.h"
-#include "threads/thread.h"
 #include "threads/vaddr.h"
-#include "lib/user/syscall.h"
 #include "filesys/filesys.h"
 #include "filesys/file.h"
 #include "threads/synch.h"
-#include "vm/page.h"
-
+#include "userprog/process.h"
 static void syscall_handler (struct intr_frame *);
-void halt();
-void exit(int status);
-pid_t exec(const char *cmdline);
-int wait(pid_t pid);
-bool create(const char *file, unsigned initial_size);
-bool remove(const char *file);
-int open(const char *file);
-int filesize(int fd);
-int read(int fd, void *buffer, unsigned size);
-int write(int fd, const void *buffer, unsigned size);
-void seek(int fd, unsigned position);
-unsigned tell(int fd);
-void close(int fd);
-struct page *check_user_address(void *addr);
-void get_argument(int *esp, int *arg , int count);
-int mmap(int fd, void *addr);
-void munmap(mapid_t mapid);
 
 struct lock file_lock;
 
@@ -367,6 +347,21 @@ int mmap(int fd, void *addr) {
   return mmap_file->map_id;
 }
 
-void munmap(mapid_t mapid) {
+void munmap(mapid_t map_id) {
+  struct mmap_file *mmap_file = find_mmap_file(map_id);
+  if (mmap_file == NULL)
+    return;
+  
 
+}
+
+// 현재 thread의 mmap_list에서 map_id에 해당하는 mmap file 찾아서 리턴
+struct mmap_file *find_mmap_file(int map_id) {
+  struct thread *t = thread_current();
+  for (struct list_elem *e = list_begin(&t->mmap_list); e != list_end(&t->mmap_list); e = list_next(e)) {
+    struct mmap_file *f = list_entry(e, struct mmap_file, elem);
+    if (f->map_id == map_id)
+      return f;
+  }
+  return NULL;
 }
