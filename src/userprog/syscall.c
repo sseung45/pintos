@@ -26,6 +26,10 @@ void close(int fd);
 void check_user_address(void *addr);
 void get_argument(int *esp, int *arg , int count);
 
+//memory mapped file
+mapid_t mmap (int fd, void *addr);
+void munmap (mapid_t);
+
 struct lock file_lock;
 
 struct file_info {
