@@ -11,10 +11,6 @@
 
 static void syscall_handler (struct intr_frame *);
 
-//memory mapped file
-mapid_t mmap (int fd, void *addr);
-void munmap (mapid_t);
-
 struct lock file_lock;
 
 struct file_info {
