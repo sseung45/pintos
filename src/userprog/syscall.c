@@ -26,6 +26,8 @@ unsigned tell(int fd);
 void close(int fd);
 struct page *check_user_address(void *addr);
 void get_argument(int *esp, int *arg , int count);
+int mmap(int fd, void *addr);
+void munmap(mapid_t mapid);
 
 struct lock file_lock;
 
@@ -124,6 +126,14 @@ syscall_handler (struct intr_frame *f UNUSED)
     case SYS_CLOSE: // 1 arguement
       get_argument(esp, args, 1);
       close((int)(args[0]));
+      break;
+    case SYS_MMAP: // 2 arguement
+      get_argument(esp, args, 2);
+      mmap((int)(args[0]),(void *)(args[1]));
+      break;
+    case SYS_MUNMAP: // 1 arguement
+      get_argument(esp, args, 1);
+      munmap((mapid_t)(args[0]));
       break;
   }
 }
@@ -298,4 +308,65 @@ void get_argument(int *esp, int *args , int count) {
     *args = *esp;
     args++;
   }
+}
+
+// 성공 시 map_id 리턴, 실패 시 -1 리턴
+int mmap(int fd, void *addr) {
+  // addr 시작점이 page 단위 정렬 안 되었을 경우 page 단위로 접근 불가함
+  if (addr == NULL || is_kernel_vaddr(addr) || pg_round_down (addr) != addr)
+    return -1;
+
+  // memory mapping할 파일 탐색
+  struct mmap_file *mmap_file = (struct mmap_file *)malloc(sizeof(struct mmap_file));
+  if (mmap_file == NULL)
+    return -1;
+  memset(mmap_file, 0, sizeof(struct mmap_file));
+  struct file_info *f_info = search(&thread_current()->file_list, fd);
+  struct file *f = f_info->file;
+  if (f == NULL)
+    return -1;
+  
+  // 현재 thread의 mmap_list에 mmap file 추가
+  mmap_file->file = file_reopen(f);
+  mmap_file->map_id = thread_current()->map_id_count;
+  thread_current()->map_id_count += 1;
+  list_push_back(&thread_current()->mmap_list, &mmap_file->elem);
+
+  // file을 메모리로 load
+  size_t ofs = 0;
+  int length = file_length(mmap_file->file);
+  size_t read_bytes = length;
+  //size_t zero_bytes = PGSIZE - read_bytes % PGSIZE;
+  while (read_bytes > 0) {
+    if (find_spte(addr) != NULL)
+      return -1;
+
+    size_t page_read_bytes = read_bytes < PGSIZE ? read_bytes : PGSIZE;
+    //size_t page_zero_bytes = PGSIZE - page_read_bytes;
+
+    struct page *spte = (struct page *)malloc(sizeof(struct page));
+    if (spte == NULL)
+      return false;
+    memset(spte, 0, sizeof(struct page));
+    spte->type = VM_FILE;
+    spte->vaddr = addr;
+    spte->write_enable = true;
+    spte->file = mmap_file->file;
+    spte->offset = ofs;
+    spte->read_bytes = page_read_bytes;
+    spte->zero_bytes = 0;
+    insert_page(&thread_current()->spt, spte);
+    list_push_back(&mmap_file->spte_list, &spte->mmap_elem);
+
+    /* Advance. */
+    read_bytes -= page_read_bytes;
+    //zero_bytes -= page_zero_bytes;
+    addr += PGSIZE;
+    ofs += page_read_bytes;
+  }
+  return mmap_file->map_id;
+}
+
+void munmap(mapid_t mapid) {
+
 }
