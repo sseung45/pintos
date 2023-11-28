@@ -14,6 +14,7 @@ struct page {
     bool write_enable;
     struct file* file;
     struct list_elem mmap_elem;
+    bool is_loaded;
     size_t offset;
     size_t read_bytes;
     size_t zero_bytes;

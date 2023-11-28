@@ -576,6 +576,7 @@ setup_stack (void **esp)
   spte->type = VM_ANON;
   spte->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
   spte->write_enable = true;
+  spte->is_loaded = true;
   //printf("setup stack create vaddr: %d\n", spte->vaddr);
   insert_page(&thread_current()->spt, spte);
 
@@ -615,6 +616,7 @@ bool handle_page_fault (struct page *spte) {
       if (!install_page(spte->vaddr, kpage, spte->write_enable)) {
         palloc_free_page (kpage);
       }
+      spte->is_loaded = true;
       return true;
     default:
       return false;
