@@ -219,6 +219,9 @@ process_exit (void)
   file_close(cur->running_file);
   close_files(&cur->file_list);
   page_destroy(&cur->spt);
+  // mmap에 대한 spte 해제
+  for (mapid_t map_id = 1; map_id < cur->map_id_count; map_id++)
+    munmap(map_id);
 
   sema_down(&(cur->exit_lock));
 }
