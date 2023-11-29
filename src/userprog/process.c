@@ -613,16 +613,16 @@ bool handle_page_fault (struct page *spte) {
   switch(spte->type) {
     case VM_BIN:
     case VM_FILE:
-      load_file(kpage, spte);
-      memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
-      install_page(spte->vaddr, kpage, spte->write_enable);
+      load_file(kpage->kaddr, spte);
+      memset(kpage->kaddr + spte->read_bytes, 0, spte->zero_bytes);
+      install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
       spte->is_loaded = true;
       insert_frame(kpage);
       return true;
 
     case VM_ANON:
       swap_in(spte->swap_table, kpage->kaddr);
-      install_page(spte->vaddr, kpage, spte->write_enable);
+      install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
       spte->is_loaded = true;
       insert_frame(kpage);
       return true;

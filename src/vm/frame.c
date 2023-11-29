@@ -55,7 +55,7 @@ struct frame *alloc_frame (enum palloc_flags flag) {
     memset(frame, 0, sizeof(struct frame));
     frame->kaddr = palloc_get_page(flag);
     frame->t = thread_current();
-
+    
     // 공간이 부족해 frame을 victim해야 할 경우
     while (frame->kaddr == NULL) {
         lock_acquire(&frame_lock);
