@@ -1,9 +1,16 @@
 #include "vm/frame.h"
 #include "threads/synch.h"
+#include <bitmap.h>
+#include "devices/block.h"
 
 struct list frame_list;
 struct lock frame_lock;
 struct list_elem *clock_ptr;
+
+struct lock swap_lock;
+struct bitmap * swap_table;
+struct block * swap_disk;
+size_t swap_slot_count;
 
 void frame_init (void) {
     list_init(&frame_list);
@@ -44,5 +51,20 @@ struct frame *alloc_frame (enum palloc_flags flag) {
 }
 
 void free_frame (void *kaddr) {
+    
+}
+
+void swap_init(void){
+    swap_disk = block_get_role(BLOCK_SWAP);
+    lock_init(&swap_lock);
+    swap_slot_count = block_size(swap_disk) / 8;
+    swap_table = bitmap_create(swap_slot_count);
+}
+
+void swap_in(size_t used_index, void* kaddr){
+
+}
+
+size_t swap_out(void* kaddr){
     
 }
