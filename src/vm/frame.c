@@ -4,6 +4,7 @@
 #include "devices/block.h"
 #include "userprog/pagedir.h"
 #include "threads/malloc.h"
+#include "filesys/file.h"
 
 struct list frame_list;
 struct lock frame_lock;
@@ -77,12 +78,14 @@ struct frame *alloc_frame (enum palloc_flags flag) {
                     victim->spte->type = VM_ANON;
                     victim->spte->swap_table = swap_out(victim->kaddr);
                 }
-            break;
+                break;
             case VM_FILE:
-            break;
+                if (pagedir_is_dirty(victim->t->pagedir, victim->spte->vaddr))
+                    file_write_at(victim->spte->file, victim->spte->vaddr, victim->spte->read_bytes, victim->spte->offset);
+                break;
             case VM_ANON:
                 victim->spte->swap_table = swap_out(victim->kaddr);
-            break; 
+                break; 
         }
         victim->spte->is_loaded = false;
         __free_frame(victim);
@@ -131,7 +134,9 @@ void swap_init(void){
 }
 
 void swap_in(size_t used_index, void* kaddr){
+    //printf("11111111111\n");
     lock_acquire(&swap_lock);
+    //printf("22222222222222222\n");
 
     size_t index_sector = used_index * 8;
     void* buf = kaddr;
@@ -148,7 +153,9 @@ void swap_in(size_t used_index, void* kaddr){
 }
 
 size_t swap_out(void* kaddr){
+    //printf("3333333333333333333\n");
     lock_acquire(&swap_lock);
+    //printf("444444444444444444\n");
 
     size_t index_empty = bitmap_scan_and_flip(swap_table, 0, 1, 0);
     if(index_empty == BITMAP_ERROR || index_empty >= swap_slot_count) //error

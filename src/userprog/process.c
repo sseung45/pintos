@@ -558,11 +558,11 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  struct frame *kpage = alloc_frame (PAL_USER | PAL_ZERO);
   struct page *spte = (struct page *)malloc(sizeof(struct page));
   if (spte == NULL)
     return false;
 
+  struct frame *kpage = alloc_frame (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
       kpage->spte = spte;

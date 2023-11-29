@@ -214,8 +214,8 @@ int read(int fd, void *buffer, unsigned size) {
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
   if (f == NULL) {
-    return -1;
     lock_release(&file_lock);
+    return -1;
   }
 
   int read_size_byte = file_read(f, buffer, size);
