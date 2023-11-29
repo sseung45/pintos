@@ -623,7 +623,7 @@ bool handle_page_fault (struct page *spte) {
       spte->is_loaded = true;
       return true;
     case VM_ANON:
-      swap_in(spte->swap_table, kpage->vaddr);
+      //swap_in(spte->swap_table, kpage->vaddr);
       spte->is_loaded = true;
       return true;
     default:
