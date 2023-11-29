@@ -19,4 +19,8 @@ struct frame *alloc_frame (enum palloc_flags flag);
 void free_frame (void *kaddr);
 static struct list_elem *get_next_clock_ptr (void);
 
+void swap_init(void);
+void swap_in(size_t used_index, void* kaddr);
+size_t swap_out(void* kaddr);
+
 #endif
