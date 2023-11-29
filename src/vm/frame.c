@@ -79,5 +79,22 @@ void swap_in(size_t used_index, void* kaddr){
 }
 
 size_t swap_out(void* kaddr){
-    
+    lock_acquire(&swap_lock);
+
+    size_t index_empty = bitmap_scan_and_flip(swap_table, 0, 1, 0);
+    if(index_empty == BITMAP_ERROR || index_empty >= swap_slot_count) //error
+        return BITMAP_ERROR;
+
+    size_t index_sector = index_empty * 8;
+    void* buf = kaddr;
+
+    for(int i = 0; i < 8; i++){
+        block_write(swap_disk, index_sector, buf);
+        index_sector++;
+        buf += BLOCK_SECTOR_SIZE;
+    }
+
+    lock_release(&swap_lock);
+
+    return index_empty;
 }
