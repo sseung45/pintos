@@ -558,33 +558,32 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint8_t *kpage;
-  bool success = false;
+  struct frame *kpage = alloc_frame (PAL_USER | PAL_ZERO);
+  struct page *spte = (struct page *)malloc(sizeof(struct page));
+  if (spte == NULL)
+    return false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      kpage->spte = spte;
+      bool success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->kaddr, true);
       if (success)
         *esp = PHYS_BASE;
       else {
-        //palloc_free_page (kpage);
+        free_frame(kpage);
+        free(spte);
         return success;
       }
     }
   
-  struct page *spte = (struct page *)malloc(sizeof(struct page));
-  if (spte == NULL)
-    return false;
   memset(spte, 0, sizeof(struct page));
   spte->type = VM_ANON;
   spte->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
   spte->write_enable = true;
   spte->is_loaded = true;
-  //printf("setup stack create vaddr: %d\n", spte->vaddr);
   insert_page(&thread_current()->spt, spte);
 
-  return success;
+  return true;
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
