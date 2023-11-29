@@ -610,19 +610,32 @@ bool handle_page_fault (struct page *spte) {
   struct frame *kpage = alloc_frame(PAL_USER);
   kpage->spte = spte;
 
+  bool success;
   switch(spte->type) {
     case VM_BIN:
     case VM_FILE:
-      load_file(kpage->kaddr, spte);
+      success = load_file(kpage->kaddr, spte);
+      if (!success) {
+        free_frame(kpage);
+        return false;
+      }
       memset(kpage->kaddr + spte->read_bytes, 0, spte->zero_bytes);
-      install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
+      success = install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
+      if (!success) {
+        free_frame(kpage);
+        return false;
+      }
       spte->is_loaded = true;
       insert_frame(kpage);
       return true;
 
     case VM_ANON:
       swap_in(spte->swap_table, kpage->kaddr);
-      install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
+      success = install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
+      if (!success) {
+        free_frame(kpage);
+        return false;
+      }
       spte->is_loaded = true;
       insert_frame(kpage);
       return true;

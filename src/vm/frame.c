@@ -37,14 +37,20 @@ void delete_frame (struct frame *frame) {
 
 static struct list_elem *get_next_clock_ptr (void) {
     ASSERT (lock_held_by_current_thread(&frame_lock));
-    if (clock_ptr == NULL)
-        return NULL;
 
+    if (clock_ptr == NULL || clock_ptr == list_end(&frame_list)) {
+        if (!list_empty(&frame_list)) {
+            clock_ptr = list_begin(&frame_list);
+            return clock_ptr;
+        }
+        else 
+            return NULL;
+    }
+
+    clock_ptr = list_next(clock_ptr);
     if (clock_ptr == list_end(&frame_list))
-        clock_ptr = list_begin(&frame_list);
-    else
-        clock_ptr = list_next(clock_ptr);
-    
+        return get_next_clock_ptr();
+
     return clock_ptr;
 }
 
@@ -112,11 +118,10 @@ void free_frame (void *kaddr) {
     lock_acquire(&frame_lock);
 
     // 제거할 frame 탐색
-    struct frame *frame;
+    struct frame *frame = NULL;
     for (struct list_elem *e = list_begin(&frame_list); e != list_end(&frame_list); e = list_next(e)) {
-        struct frame *tmp_frame = list_entry(e, struct frame, elem);
-        if (tmp_frame->kaddr == kaddr) {
-            frame = tmp_frame;
+        if (list_entry(e, struct frame, elem)->kaddr == kaddr) {
+            frame = list_entry(e, struct frame, elem);
             break;
         }
     }
@@ -173,4 +178,12 @@ size_t swap_out(void* kaddr){
     lock_release(&swap_lock);
 
     return index_empty;
+}
+
+void swap_clear (size_t used_index){
+  if (used_index-- == 0)
+    return;
+  lock_acquire (&swap_lock);
+  bitmap_set_multiple (swap_table, used_index, 1, false);
+  lock_release (&swap_lock);
 }

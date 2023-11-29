@@ -371,9 +371,8 @@ void munmap(mapid_t map_id) {
       free_frame(pagedir_get_page(thread_current()->pagedir, spte->vaddr));
     }
     spte->is_loaded = false;
-    delete_page(&thread_current()->spt, spte);
-    
     e = list_remove(e);
+    delete_page(&thread_current()->spt, spte);
   }
 
   list_remove(&mmap_file->elem);
