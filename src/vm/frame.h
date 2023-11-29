@@ -1,5 +1,5 @@
-#ifndef VM_PAGE_H
-#define VM_PAGE_H
+#ifndef VM_FRAME_H
+#define VM_FRAME_H
 
 #include "vm/page.h"
 #include "threads/thread.h"

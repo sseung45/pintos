@@ -2,6 +2,7 @@
 #include "threads/synch.h"
 #include "lib/kernel/bitmap.h"
 #include "devices/block.h"
+#include "userprog/pagedir.h"
 
 struct list frame_list;
 struct lock frame_lock;
@@ -47,7 +48,48 @@ static struct list_elem *get_next_clock_ptr (void) {
 
 
 struct frame *alloc_frame (enum palloc_flags flag) {
-    
+    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
+    if (frame == NULL)
+        return NULL;
+    memset(frame, 0, sizeof(struct frame));
+    frame->kaddr = palloc_get_page(flag);
+    frame->t = thread_current();
+
+    // 공간이 부족해 frame을 victim해야 할 경우
+    while (frame->kaddr == NULL) {
+        lock_acquire(&frame_lock);
+        struct list_elem *e = get_next_clock_ptr();
+        struct frame *victim = list_entry(e, struct frame, elem);
+
+        // victim frame 선택 (clock algorithm)
+        while (pagedir_is_accessed(victim->t->pagedir, victim->spte->vaddr)) {
+            pagedir_set_accessed(victim->t->pagedir, victim->spte->vaddr, false);
+            e = get_next_clock_ptr();
+
+            victim = list_entry(e, struct frame, elem);
+        }
+        
+        // type별 swap out 처리
+        switch (victim->spte->type) {
+            case VM_BIN:
+                if (pagedir_is_dirty(victim->t->pagedir, victim->spte->vaddr)) {
+                    victim->spte->type = VM_ANON;
+                    victim->spte->swap_table = swap_out(victim->kaddr);
+                }
+            break;
+            case VM_FILE:
+            break;
+            case VM_ANON:
+                victim->spte->swap_table = swap_out(victim->kaddr);
+            break; 
+        }
+        victim->spte->is_loaded = false;
+        //free_frame(victim)
+        lock_release(&frame_lock);
+
+        frame->kaddr = palloc_get_page(flag);
+    }
+    return frame;
 }
 
 void free_frame (void *kaddr) {
