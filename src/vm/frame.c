@@ -111,8 +111,9 @@ void free_frame (void *kaddr) {
     // 제거할 frame 탐색
     struct frame *frame;
     for (struct list_elem *e = list_begin(&frame_list); e != list_end(&frame_list); e = list_next(e)) {
-        if (frame->kaddr == kaddr) {
-            frame = list_entry(e, struct frame, elem);
+        struct frame *tmp_frame = list_entry(e, struct frame, elem);
+        if (tmp_frame->kaddr == kaddr) {
+            frame = tmp_frame;
             break;
         }
     }
