@@ -3,6 +3,7 @@
 #include "lib/kernel/bitmap.h"
 #include "devices/block.h"
 #include "userprog/pagedir.h"
+#include "threads/malloc.h"
 
 struct list frame_list;
 struct lock frame_lock;
@@ -84,7 +85,7 @@ struct frame *alloc_frame (enum palloc_flags flag) {
             break; 
         }
         victim->spte->is_loaded = false;
-        //free_frame(victim)
+        __free_frame(victim);
         lock_release(&frame_lock);
 
         frame->kaddr = palloc_get_page(flag);
@@ -92,8 +93,33 @@ struct frame *alloc_frame (enum palloc_flags flag) {
     return frame;
 }
 
+void __free_frame (struct frame *frame) {
+    ASSERT (lock_held_by_current_thread(&frame_lock));    
+
+    pagedir_clear_page(frame->t->pagedir, frame->spte->vaddr);
+    if (clock_ptr == &frame->elem)
+        clock_ptr = list_remove(clock_ptr);
+    else
+        list_remove(&frame->elem);
+    palloc_free_page(frame->kaddr);
+    free(frame);
+}
+
 void free_frame (void *kaddr) {
+    lock_acquire(&frame_lock);
+
+    // 제거할 frame 탐색
+    struct frame *frame;
+    for (struct list_elem *e = list_begin(&frame_list); e != list_end(&frame_list); e = list_next(e)) {
+        if (frame->kaddr == kaddr) {
+            frame = list_entry(e, struct frame, elem);
+            break;
+        }
+    }
+    if (frame != NULL)
+        __free_frame(frame);
     
+    lock_release(&frame_lock);
 }
 
 void swap_init(void){
