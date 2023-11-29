@@ -631,3 +631,7 @@ bool handle_page_fault (struct page *spte) {
   }
   return false;  // not reached
 }
+
+bool stack_growth(void* addr){
+  
+}
