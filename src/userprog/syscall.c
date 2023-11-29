@@ -8,6 +8,7 @@
 #include "threads/synch.h"
 #include "userprog/process.h"
 #include "userprog/pagedir.h"
+#include "vm/frame.h"
 
 static void syscall_handler (struct intr_frame *);
 
@@ -367,7 +368,7 @@ void munmap(mapid_t map_id) {
         printf("panic in munmap func+++++++++++++=\n");
         NOT_REACHED();  // panic
       }
-      //palloc_free_page (spte->vaddr);  // frame table 구현 후 수정
+      free_frame(pagedir_get_page(thread_current()->pagedir, spte->vaddr));
     }
     spte->is_loaded = false;
     delete_page(&thread_current()->spt, spte);
