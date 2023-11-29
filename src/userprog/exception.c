@@ -157,12 +157,19 @@ page_fault (struct intr_frame *f)
 
   struct page *spte = find_spte(fault_addr);
   
-  // stack growth 기능 추가 필요
+  // stack growth
   if (!spte) {
    if (!is_user_vaddr(fault_addr)) // 조건 추가 필요
       exit(-1);
-   exit(-1); // stack growth 구현 후 return으로 수정
+   if(fault_addr >= f->esp - 32) //PUSHA instruction 고려
+      if(!stack_growth(fault_addr))
+         exit(-1);
+   else
+      exit(-1);
   }
+
+  if(write && !(spte->write_enable))
+   exit(-1);
 
   // handle_page_fault 함수 추가
   if (!handle_page_fault(spte))
