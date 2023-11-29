@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#include "vm/frame.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -607,27 +608,28 @@ install_page (void *upage, void *kpage, bool writable)
 }
 
 bool handle_page_fault (struct page *spte) {
-  uint8_t *kpage;
-  kpage = palloc_get_page (PAL_USER);
+  struct frame *kpage = alloc_frame(PAL_USER);
+  kpage->spte = spte;
+
   switch(spte->type) {
     case VM_BIN:
     case VM_FILE:
-      if (!load_file(kpage, spte)) {
-        //palloc_free_page (kpage);
-        return false;
-      }
+      load_file(kpage, spte);
       memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
-      if (!install_page(spte->vaddr, kpage, spte->write_enable)) {
-        //palloc_free_page (kpage);
-      }
+      install_page(spte->vaddr, kpage, spte->write_enable);
       spte->is_loaded = true;
+      insert_frame(kpage);
       return true;
+
     case VM_ANON:
-      //swap_in(spte->swap_table, kpage->vaddr);
+      swap_in(spte->swap_table, kpage->kaddr);
+      install_page(spte->vaddr, kpage, spte->write_enable);
       spte->is_loaded = true;
+      insert_frame(kpage);
       return true;
+
     default:
-      return false;
+      break;
   }
   return false;  // not reached
 }
