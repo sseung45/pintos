@@ -2,6 +2,9 @@
 #include "threads/synch.h"
 #include "lib/kernel/bitmap.h"
 #include "devices/block.h"
+#include "userprog/pagedir.h"
+#include "threads/malloc.h"
+#include "filesys/file.h"
 
 struct list frame_list;
 struct lock frame_lock;
@@ -34,24 +37,98 @@ void delete_frame (struct frame *frame) {
 
 static struct list_elem *get_next_clock_ptr (void) {
     ASSERT (lock_held_by_current_thread(&frame_lock));
-    if (clock_ptr == NULL)
-        return NULL;
 
+    if (clock_ptr == NULL || clock_ptr == list_end(&frame_list)) {
+        if (!list_empty(&frame_list)) {
+            clock_ptr = list_begin(&frame_list);
+            return clock_ptr;
+        }
+        else 
+            return NULL;
+    }
+
+    clock_ptr = list_next(clock_ptr);
     if (clock_ptr == list_end(&frame_list))
-        clock_ptr = list_begin(&frame_list);
-    else
-        clock_ptr = list_next(clock_ptr);
-    
+        return get_next_clock_ptr();
+
     return clock_ptr;
 }
 
 
 struct frame *alloc_frame (enum palloc_flags flag) {
+    struct frame *frame = (struct frame *)malloc(sizeof(struct frame));
+    if (frame == NULL)
+        return NULL;
+    memset(frame, 0, sizeof(struct frame));
+    frame->kaddr = palloc_get_page(flag);
+    frame->t = thread_current();
     
+    // 공간이 부족해 frame을 victim해야 할 경우
+    while (frame->kaddr == NULL) {
+        lock_acquire(&frame_lock);
+        struct list_elem *e = get_next_clock_ptr();
+        struct frame *victim = list_entry(e, struct frame, elem);
+
+        // victim frame 선택 (clock algorithm)
+        while (pagedir_is_accessed(victim->t->pagedir, victim->spte->vaddr)) {
+            pagedir_set_accessed(victim->t->pagedir, victim->spte->vaddr, false);
+            e = get_next_clock_ptr();
+
+            victim = list_entry(e, struct frame, elem);
+        }
+        
+        // type별 swap out 처리
+        switch (victim->spte->type) {
+            case VM_BIN:
+                if (pagedir_is_dirty(victim->t->pagedir, victim->spte->vaddr)) {
+                    victim->spte->type = VM_ANON;
+                    victim->spte->swap_table = swap_out(victim->kaddr);
+                }
+                break;
+            case VM_FILE:
+                if (pagedir_is_dirty(victim->t->pagedir, victim->spte->vaddr))
+                    file_write_at(victim->spte->file, victim->spte->vaddr, victim->spte->read_bytes, victim->spte->offset);
+                break;
+            case VM_ANON:
+                victim->spte->swap_table = swap_out(victim->kaddr);
+                break; 
+        }
+        victim->spte->is_loaded = false;
+        __free_frame(victim);
+        lock_release(&frame_lock);
+
+        frame->kaddr = palloc_get_page(flag);
+    }
+    return frame;
+}
+
+void __free_frame (struct frame *frame) {
+    ASSERT (lock_held_by_current_thread(&frame_lock));    
+
+    pagedir_clear_page(frame->t->pagedir, frame->spte->vaddr);
+    if (clock_ptr == &frame->elem)
+        clock_ptr = list_remove(clock_ptr);
+    else
+        list_remove(&frame->elem);
+    palloc_free_page(frame->kaddr);
+    free(frame);
 }
 
 void free_frame (void *kaddr) {
+    lock_acquire(&frame_lock);
+
+    // 제거할 frame 탐색
+    struct frame *frame = NULL;
+    for (struct list_elem *e = list_begin(&frame_list); e != list_end(&frame_list); e = list_next(e)) {
+        if (list_entry(e, struct frame, elem)->kaddr == kaddr) {
+            frame = list_entry(e, struct frame, elem);
+            break;
+        }
+    }
+    if (frame != NULL)
+        __free_frame(frame);
     
+    lock_release(&frame_lock);
 }
 
 void swap_init(void){
@@ -62,7 +139,9 @@ void swap_init(void){
 }
 
 void swap_in(size_t used_index, void* kaddr){
+    //printf("11111111111\n");
     lock_acquire(&swap_lock);
+    //printf("22222222222222222\n");
 
     size_t index_sector = used_index * 8;
     void* buf = kaddr;
@@ -79,7 +158,9 @@ void swap_in(size_t used_index, void* kaddr){
 }
 
 size_t swap_out(void* kaddr){
+    //printf("3333333333333333333\n");
     lock_acquire(&swap_lock);
+    //printf("444444444444444444\n");
 
     size_t index_empty = bitmap_scan_and_flip(swap_table, 0, 1, 0);
     if(index_empty == BITMAP_ERROR || index_empty >= swap_slot_count) //error
@@ -97,4 +178,12 @@ size_t swap_out(void* kaddr){
     lock_release(&swap_lock);
 
     return index_empty;
+}
+
+void swap_clear (size_t used_index){
+  if (used_index-- == 0)
+    return;
+  lock_acquire (&swap_lock);
+  bitmap_set_multiple (swap_table, used_index, 1, false);
+  lock_release (&swap_lock);
 }

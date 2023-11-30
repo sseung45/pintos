@@ -18,6 +18,7 @@
 #include "threads/thread.h"
 #include "threads/vaddr.h"
 #include "userprog/syscall.h"
+#include "vm/frame.h"
 
 static thread_func start_process NO_RETURN;
 static bool load (const char *cmdline, void (**eip) (void), void **esp);
@@ -557,33 +558,32 @@ load_segment (struct file *file, off_t ofs, uint8_t *upage,
 static bool
 setup_stack (void **esp) 
 {
-  uint8_t *kpage;
-  bool success = false;
+  struct page *spte = (struct page *)malloc(sizeof(struct page));
+  if (spte == NULL)
+    return false;
 
-  kpage = palloc_get_page (PAL_USER | PAL_ZERO);
+  struct frame *kpage = alloc_frame (PAL_USER | PAL_ZERO);
   if (kpage != NULL) 
     {
-      success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage, true);
+      kpage->spte = spte;
+      bool success = install_page (((uint8_t *) PHYS_BASE) - PGSIZE, kpage->kaddr, true);
       if (success)
         *esp = PHYS_BASE;
       else {
-        //palloc_free_page (kpage);
+        free_frame(kpage);
+        free(spte);
         return success;
       }
     }
   
-  struct page *spte = (struct page *)malloc(sizeof(struct page));
-  if (spte == NULL)
-    return false;
   memset(spte, 0, sizeof(struct page));
   spte->type = VM_ANON;
   spte->vaddr = ((uint8_t *) PHYS_BASE) - PGSIZE;
   spte->write_enable = true;
   spte->is_loaded = true;
-  //printf("setup stack create vaddr: %d\n", spte->vaddr);
   insert_page(&thread_current()->spt, spte);
 
-  return success;
+  return true;
 }
 
 /* Adds a mapping from user virtual address UPAGE to kernel
@@ -607,27 +607,41 @@ install_page (void *upage, void *kpage, bool writable)
 }
 
 bool handle_page_fault (struct page *spte) {
-  uint8_t *kpage;
-  kpage = palloc_get_page (PAL_USER);
+  struct frame *kpage = alloc_frame(PAL_USER);
+  kpage->spte = spte;
+
+  bool success;
   switch(spte->type) {
     case VM_BIN:
     case VM_FILE:
-      if (!load_file(kpage, spte)) {
-        //palloc_free_page (kpage);
+      success = load_file(kpage->kaddr, spte);
+      if (!success) {
+        free_frame(kpage);
         return false;
       }
-      memset(kpage + spte->read_bytes, 0, spte->zero_bytes);
-      if (!install_page(spte->vaddr, kpage, spte->write_enable)) {
-        //palloc_free_page (kpage);
+      memset(kpage->kaddr + spte->read_bytes, 0, spte->zero_bytes);
+      success = install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
+      if (!success) {
+        free_frame(kpage);
+        return false;
       }
       spte->is_loaded = true;
+      insert_frame(kpage);
       return true;
+
     case VM_ANON:
-      swap_in(spte->swap_table, kpage->vaddr);
+      swap_in(spte->swap_table, kpage->kaddr);
+      success = install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
+      if (!success) {
+        free_frame(kpage);
+        return false;
+      }
       spte->is_loaded = true;
+      insert_frame(kpage);
       return true;
+
     default:
-      return false;
+      break;
   }
   return false;  // not reached
 }
