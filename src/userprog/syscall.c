@@ -190,7 +190,7 @@ int filesize(int fd)
 
 void pin(char *start, char *end)
 {
-  for (int i = start; i < end; i += PGSIZE) {
+  for (char *i = start; i < end; i += PGSIZE) {
     struct page *spte = find_spte(i);
     spte->pinned = true;
     if (spte->is_loaded == false)
@@ -200,7 +200,7 @@ void pin(char *start, char *end)
 
 void unpin(char *start, char *end)
 {
-  for (int i = start; i < end; i += PGSIZE)
+  for (char *i = start; i < end; i += PGSIZE)
     find_spte(i)->pinned = false;
 }
 
@@ -237,7 +237,6 @@ int read(int fd, void *buffer, unsigned size) {
     lock_release(&file_lock);
     return -1;
   }
-
   int read_size_byte = file_read(f, buffer, size);
   unpin(buffer, buffer + size);
   lock_release(&file_lock);
@@ -366,7 +365,7 @@ int mmap(int fd, void *addr) {
     spte->file = mmap_file->file;
     spte->offset = ofs;
     spte->read_bytes = page_read_bytes;
-    spte->zero_bytes = 0;
+    spte->zero_bytes = PGSIZE - page_read_bytes;
     insert_page(&thread_current()->spt, spte);
     list_push_back(&mmap_file->spte_list, &spte->mmap_elem);
 

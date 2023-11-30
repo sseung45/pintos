@@ -89,6 +89,7 @@ struct frame *alloc_frame (enum palloc_flags flag) {
                     victim->spte->swap_table = swap_out(victim->kaddr);
                 }
                 break;
+                
             case VM_FILE:
                 if (pagedir_is_dirty(victim->t->pagedir, victim->spte->vaddr)) {
                     lock_acquire(&file_lock);
@@ -114,13 +115,7 @@ void __free_frame (struct frame *frame) {
     ASSERT (lock_held_by_current_thread(&frame_lock));    
 
     pagedir_clear_page(frame->t->pagedir, frame->spte->vaddr);
-    if (clock_ptr == &frame->elem) {
-        clock_ptr = get_next_clock_ptr();
-        list_remove(&frame->elem);
-    }
-        
-    else
-        list_remove(&frame->elem);
+    delete_frame(frame);
     palloc_free_page(frame->kaddr);
     free(frame);
 }
@@ -161,9 +156,9 @@ void swap_in(size_t used_index, void* kaddr){
         index_sector++;
         buf += BLOCK_SECTOR_SIZE;
     }
-    lock_release(&file_lock);
     bitmap_set(swap_table, used_index, 0);
 
+    lock_release(&file_lock);
     lock_release(&swap_lock);
 }
 
