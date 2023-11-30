@@ -161,11 +161,14 @@ page_fault (struct intr_frame *f)
   if (!spte) {
    if (!is_user_vaddr(fault_addr)) // 조건 추가 필요
       exit(-1);
-   if(fault_addr >= f->esp - 32) //PUSHA instruction 고려
+   if(fault_addr >= f->esp - 32) { //PUSHA instruction 고려
+      //printf("stack growth 시작");
       if(!stack_growth(fault_addr))
          exit(-1);
-   else
+   }
+   else{
       exit(-1);
+   }
   }
 
   if(write && !(spte->write_enable))
