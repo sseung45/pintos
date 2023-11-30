@@ -108,6 +108,7 @@ struct frame *alloc_frame (enum palloc_flags flag) {
 
         frame->kaddr = palloc_get_page(flag);
     }
+    insert_frame(frame);
     return frame;
 }
 

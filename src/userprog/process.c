@@ -629,7 +629,7 @@ bool handle_page_fault (struct page *spte) {
         return false;
       }
       spte->is_loaded = true;
-      insert_frame(kpage);
+      //insert_frame(kpage);
       return true;
 
     case VM_ANON:
@@ -640,7 +640,7 @@ bool handle_page_fault (struct page *spte) {
         return false;
       }
       spte->is_loaded = true;
-      insert_frame(kpage);
+      //insert_frame(kpage);
       return true;
 
     default:
