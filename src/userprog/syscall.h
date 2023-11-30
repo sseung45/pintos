@@ -18,10 +18,11 @@ int write(int fd, const void *buffer, unsigned size);
 void seek(int fd, unsigned position);
 unsigned tell(int fd);
 void close(int fd);
-struct page *check_user_address(void *addr);
+void check_user_address(void *addr);
 void get_argument(int *esp, int *arg , int count);
 int mmap(int fd, void *addr);
 void munmap(mapid_t map_id);
 struct mmap_file *find_mmap_file(int map_id);
+void close_files(struct list *file_list);
 
 #endif /* userprog/syscall.h */

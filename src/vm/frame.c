@@ -6,6 +6,8 @@
 #include "threads/malloc.h"
 #include "filesys/file.h"
 
+extern struct lock file_lock;
+
 struct list frame_list;
 struct lock frame_lock;
 struct list_elem *clock_ptr;
@@ -29,8 +31,10 @@ void insert_frame (struct frame *frame) {
 
 void delete_frame (struct frame *frame) {
     ASSERT (lock_held_by_current_thread(&frame_lock));
-    if (clock_ptr == &frame->elem)
-        clock_ptr = list_remove(&frame->elem);
+    if (clock_ptr == &frame->elem) {
+        clock_ptr = get_next_clock_ptr();
+        list_remove(&frame->elem);
+    }
     else
         list_remove(&frame->elem);
 }
@@ -70,7 +74,7 @@ struct frame *alloc_frame (enum palloc_flags flag) {
         struct frame *victim = list_entry(e, struct frame, elem);
 
         // victim frame 선택 (clock algorithm)
-        while (pagedir_is_accessed(victim->t->pagedir, victim->spte->vaddr)) {
+        while (victim->spte->pinned || pagedir_is_accessed(victim->t->pagedir, victim->spte->vaddr)) {
             pagedir_set_accessed(victim->t->pagedir, victim->spte->vaddr, false);
             e = get_next_clock_ptr();
 
@@ -86,8 +90,12 @@ struct frame *alloc_frame (enum palloc_flags flag) {
                 }
                 break;
             case VM_FILE:
-                if (pagedir_is_dirty(victim->t->pagedir, victim->spte->vaddr))
+                if (pagedir_is_dirty(victim->t->pagedir, victim->spte->vaddr)) {
+                    lock_acquire(&file_lock);
                     file_write_at(victim->spte->file, victim->spte->vaddr, victim->spte->read_bytes, victim->spte->offset);
+                    lock_acquire(&file_lock);
+                }
+                    
                 break;
             case VM_ANON:
                 victim->spte->swap_table = swap_out(victim->kaddr);
@@ -106,8 +114,11 @@ void __free_frame (struct frame *frame) {
     ASSERT (lock_held_by_current_thread(&frame_lock));    
 
     pagedir_clear_page(frame->t->pagedir, frame->spte->vaddr);
-    if (clock_ptr == &frame->elem)
-        clock_ptr = list_remove(clock_ptr);
+    if (clock_ptr == &frame->elem) {
+        clock_ptr = get_next_clock_ptr();
+        list_remove(&frame->elem);
+    }
+        
     else
         list_remove(&frame->elem);
     palloc_free_page(frame->kaddr);
@@ -139,51 +150,45 @@ void swap_init(void){
 }
 
 void swap_in(size_t used_index, void* kaddr){
-    //printf("11111111111\n");
     lock_acquire(&swap_lock);
-    //printf("22222222222222222\n");
+    lock_acquire(&file_lock);
 
     size_t index_sector = used_index * 8;
     void* buf = kaddr;
-
+    
     for(int i = 0; i < 8; i++){
         block_read(swap_disk, index_sector, buf);
         index_sector++;
         buf += BLOCK_SECTOR_SIZE;
     }
-
+    lock_release(&file_lock);
     bitmap_set(swap_table, used_index, 0);
 
     lock_release(&swap_lock);
 }
 
 size_t swap_out(void* kaddr){
-    //printf("3333333333333333333\n");
     lock_acquire(&swap_lock);
-    //printf("444444444444444444\n");
+    lock_acquire(&file_lock);
 
     size_t index_empty = bitmap_scan_and_flip(swap_table, 0, 1, 0);
-    if(index_empty == BITMAP_ERROR || index_empty >= swap_slot_count) //error
+    if (index_empty == BITMAP_ERROR || index_empty >= swap_slot_count) {
+        lock_release(&file_lock);
+        lock_release(&swap_lock);
         return BITMAP_ERROR;
+    }
 
     size_t index_sector = index_empty * 8;
     void* buf = kaddr;
-
+    
     for(int i = 0; i < 8; i++){
         block_write(swap_disk, index_sector, buf);
         index_sector++;
         buf += BLOCK_SECTOR_SIZE;
     }
 
+    lock_release(&file_lock);
     lock_release(&swap_lock);
 
     return index_empty;
-}
-
-void swap_clear (size_t used_index){
-  if (used_index-- == 0)
-    return;
-  lock_acquire (&swap_lock);
-  bitmap_set_multiple (swap_table, used_index, 1, false);
-  lock_release (&swap_lock);
 }

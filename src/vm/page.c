@@ -6,6 +6,8 @@
 #include <string.h>
 #include "vm/frame.h"
 
+extern struct lock file_lock;
+
 
 void page_init (struct hash *page) {
     hash_init(page, page_hash_func, page_less_func, NULL);
@@ -35,7 +37,6 @@ bool delete_page (struct hash *page, struct page *page_entry) {
     if (!hash_delete(page, &page_entry->helem))
         return false;
     free_frame(pagedir_get_page(thread_current()->pagedir, page_entry->vaddr));
-    swap_clear(page_entry->swap_table);
     free(page_entry);
     return true;
 }
@@ -61,26 +62,26 @@ void page_destroy (struct hash *page) {
 // page(spt entry) 할당 해제 구현 필요
 void page_destroy_func (struct hash_elem *e, void *aux) {
     struct page *spte = hash_entry(e, struct page, helem);
-    if (spte && spte->is_loaded)
+    if (spte == NULL)
+        return;
+    if (spte->is_loaded)
         free_frame(pagedir_get_page(thread_current()->pagedir, spte->vaddr));
-    swap_clear(spte->swap_table);
     free(spte);
 }
 
 bool load_file (void *kaddr, struct page *spte) {
-    size_t bytes = file_read_at(spte->file, kaddr, spte->read_bytes, spte->offset);
-    if (bytes != spte->read_bytes) {
-        return false;
-    }
-    else {
+    if (lock_held_by_current_thread(&file_lock)) {
+        if (file_read_at(spte->file, kaddr, spte->read_bytes, spte->offset) != spte->read_bytes)
+            return false;
         return true;
     }
-}
-
-void check_valid_buffer (void *buffer, unsigned size, void *esp, bool to_write) {
-    for (int i = 0; i < size; i++) {
-        struct page* spte = check_user_address(buffer + i);
-        if(spte == NULL || (to_write == true && spte->write_enable == false))
-            exit(-1);
+    else {
+        lock_acquire(&file_lock);
+        if (file_read_at(spte->file, kaddr, spte->read_bytes, spte->offset) != spte->read_bytes) {
+            lock_release(&file_lock);
+            return false;
+        }
+        lock_release(&file_lock);
+        return true;
     }
 }

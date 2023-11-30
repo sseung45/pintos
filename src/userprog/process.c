@@ -199,13 +199,14 @@ process_exit (void)
   uint32_t *pd;
 
   sema_up(&(cur->child_lock));
-
-  close_files(&cur->file_list);
+  
   // mmap에 대한 spte 해제
-  for (mapid_t map_id = 1; map_id < cur->map_id_count; map_id++)
+  for (int map_id = 1; map_id < cur->map_id_count; map_id++)
     munmap(map_id);
-  page_destroy(&cur->spt);
+  
+  close_files(&cur->file_list);
   file_close(cur->running_file);
+  page_destroy(&cur->spt);
 
   sema_down(&(cur->exit_lock));
 
@@ -334,6 +335,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Open executable file. */
   lock_acquire (&file_lock);
+
   file = filesys_open (file_name);
   if (file == NULL) 
     {
@@ -344,6 +346,7 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   t->running_file = file;
   file_deny_write(t->running_file);
+  
   lock_release (&file_lock);
 
   /* Read and verify executable header. */
@@ -570,7 +573,7 @@ setup_stack (void **esp)
       if (success)
         *esp = PHYS_BASE;
       else {
-        free_frame(kpage);
+        free_frame(kpage->kaddr);
         free(spte);
         return success;
       }
@@ -616,13 +619,13 @@ bool handle_page_fault (struct page *spte) {
     case VM_FILE:
       success = load_file(kpage->kaddr, spte);
       if (!success) {
-        free_frame(kpage);
+        free_frame(kpage->kaddr);
         return false;
       }
       memset(kpage->kaddr + spte->read_bytes, 0, spte->zero_bytes);
       success = install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
       if (!success) {
-        free_frame(kpage);
+        free_frame(kpage->kaddr);
         return false;
       }
       spte->is_loaded = true;
@@ -633,7 +636,7 @@ bool handle_page_fault (struct page *spte) {
       swap_in(spte->swap_table, kpage->kaddr);
       success = install_page(spte->vaddr, kpage->kaddr, spte->write_enable);
       if (!success) {
-        free_frame(kpage);
+        free_frame(kpage->kaddr);
         return false;
       }
       spte->is_loaded = true;

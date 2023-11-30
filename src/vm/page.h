@@ -20,6 +20,7 @@ struct page {
     size_t zero_bytes;
     size_t swap_table;
     struct hash_elem helem;
+    bool pinned;
 };
 
 // mapping된 file의 정보를 저장하는 구조체

@@ -90,12 +90,10 @@ syscall_handler (struct intr_frame *f UNUSED)
       break;
     case SYS_READ: // 3 arguement
       get_argument(esp, args, 3);
-      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), f->esp, true);
       f->eax = read((int)(args[0]), (void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_WRITE: // 3 arguement
       get_argument(esp, args, 3);
-      check_valid_buffer((void *)(args[1]), (unsigned)(args[2]), f->esp, false);
       f->eax = write((int)(args[0]), (const void *)(args[1]), (unsigned)(args[2]));
       break;
     case SYS_SEEK: // 2 arguement
@@ -190,8 +188,29 @@ int filesize(int fd)
   return file_length(f);
 }
 
+void pin(char *start, char *end, bool write)
+{
+  for (int i = start; i < end; i += PGSIZE) {
+    struct page *spte = find_spte(i);
+    if (write && spte->write_enable == false)
+      exit (-1);
+    spte->pinned = true;
+    if (spte->is_loaded == false)
+      handle_page_fault(spte);
+  }
+}
+
+void unpin(char *start, char *end)
+{
+  for (int i = start; i < end; i += PGSIZE)
+    find_spte(i)->pinned = false;
+}
+
+
 int read(int fd, void *buffer, unsigned size) {
   check_user_address(buffer);
+  check_user_address(buffer+size);
+  pin(buffer, buffer + size, true);
   lock_acquire(&file_lock);
   if (fd == 0) {  // stdin
     unsigned idx = 0;
@@ -202,10 +221,12 @@ int read(int fd, void *buffer, unsigned size) {
       if (w == '\0')
         break;
     }
+    unpin(buffer, buffer + size);
     lock_release(&file_lock);
     return idx;
   }
   if (fd == 1) {
+    unpin(buffer, buffer + size);
     lock_release(&file_lock);
     return -1;
   }
@@ -214,18 +235,20 @@ int read(int fd, void *buffer, unsigned size) {
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
   if (f == NULL) {
+    unpin(buffer, buffer + size);
     lock_release(&file_lock);
     return -1;
   }
 
   int read_size_byte = file_read(f, buffer, size);
+  //unpin_string (buffer, buffer + size);
   lock_release(&file_lock);
   return read_size_byte;
 }
 
 int write(int fd, const void *buffer, unsigned size) {
   check_user_address(buffer);
-
+  check_user_address(buffer+size);
   lock_acquire(&file_lock);
   //printf("write in +++++++++++++++++++++++++++++++++++++++++\n");
   if (fd == 1) {  // stdout
@@ -276,11 +299,10 @@ void close(int fd) {
   free(f_info);
 }
 
-struct page *check_user_address(void *addr) {
+void check_user_address(void *addr) {
   // 포인터가 user 영역 주소를 가리키는지 확인
   if (is_kernel_vaddr(addr) || addr == NULL)
     exit(-1);
-  return find_spte(addr);
 }
 
 void get_argument(int *esp, int *args , int count) {
@@ -363,11 +385,9 @@ void munmap(mapid_t map_id) {
   while (e != list_end(&mmap_file->spte_list)) {
     struct page *spte = list_entry(e, struct page, mmap_elem);
     if (spte->is_loaded && pagedir_is_dirty(thread_current()->pagedir, spte->vaddr)) {
-      size_t bytes = file_write_at(spte->file, spte->vaddr, spte->read_bytes, spte->offset);
-      if (bytes != spte->read_bytes) {
-        printf("panic in munmap func+++++++++++++=\n");
-        NOT_REACHED();  // panic
-      }
+      lock_acquire(&file_lock);
+      file_write_at(spte->file, spte->vaddr, spte->read_bytes, spte->offset);
+      lock_release(&file_lock);
       free_frame(pagedir_get_page(thread_current()->pagedir, spte->vaddr));
     }
     spte->is_loaded = false;
