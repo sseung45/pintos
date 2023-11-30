@@ -188,12 +188,10 @@ int filesize(int fd)
   return file_length(f);
 }
 
-void pin(char *start, char *end, bool write)
+void pin(char *start, char *end)
 {
   for (int i = start; i < end; i += PGSIZE) {
     struct page *spte = find_spte(i);
-    if (write && spte->write_enable == false)
-      exit (-1);
     spte->pinned = true;
     if (spte->is_loaded == false)
       handle_page_fault(spte);
@@ -210,7 +208,7 @@ void unpin(char *start, char *end)
 int read(int fd, void *buffer, unsigned size) {
   check_user_address(buffer);
   check_user_address(buffer+size);
-  pin(buffer, buffer + size, true);
+  pin(buffer, buffer + size);
   lock_acquire(&file_lock);
   if (fd == 0) {  // stdin
     unsigned idx = 0;
@@ -221,13 +219,13 @@ int read(int fd, void *buffer, unsigned size) {
       if (w == '\0')
         break;
     }
-    lock_release(&file_lock);
     unpin(buffer, buffer + size);
+    lock_release(&file_lock);
     return idx;
   }
   if (fd == 1) {
-    lock_release(&file_lock);
     unpin(buffer, buffer + size);
+    lock_release(&file_lock);
     return -1;
   }
 
@@ -235,42 +233,44 @@ int read(int fd, void *buffer, unsigned size) {
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
   if (f == NULL) {
-    lock_release(&file_lock);
     unpin(buffer, buffer + size);
+    lock_release(&file_lock);
     return -1;
   }
 
   int read_size_byte = file_read(f, buffer, size);
-  lock_release(&file_lock);
   unpin(buffer, buffer + size);
+  lock_release(&file_lock);
   return read_size_byte;
 }
 
 int write(int fd, const void *buffer, unsigned size) {
   check_user_address(buffer);
   check_user_address(buffer+size);
+  pin(buffer, buffer + size);
   lock_acquire(&file_lock);
   //printf("write in +++++++++++++++++++++++++++++++++++++++++\n");
   if (fd == 1) {  // stdout
     putbuf(buffer, size);
     lock_release(&file_lock);
+    unpin(buffer, buffer + size);
     return size;
   }
   if (fd == 0) {
     lock_release(&file_lock);
+    unpin(buffer, buffer + size);
     return 0;
   }
 
   // fd != 0, 1
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
-  if (f == NULL){
-    lock_release(&file_lock);
+  if (f == NULL)
     return 0;
-  }
   
   int write_bytes = file_write(f, buffer, size);
   lock_release(&file_lock);
+  unpin(buffer, buffer + size);
   return write_bytes;
 }
 
