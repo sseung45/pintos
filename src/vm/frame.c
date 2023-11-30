@@ -93,7 +93,7 @@ struct frame *alloc_frame (enum palloc_flags flag) {
                 if (pagedir_is_dirty(victim->t->pagedir, victim->spte->vaddr)) {
                     lock_acquire(&file_lock);
                     file_write_at(victim->spte->file, victim->spte->vaddr, victim->spte->read_bytes, victim->spte->offset);
-                    lock_acquire(&file_lock);
+                    lock_release(&file_lock);
                 }
                     
                 break;
