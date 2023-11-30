@@ -162,21 +162,28 @@ page_fault (struct intr_frame *f)
    if (!is_user_vaddr(fault_addr)) // 조건 추가 필요
       exit(-1);
    if(fault_addr >= f->esp - 32) { //PUSHA instruction 고려
-      //printf("stack growth 시작");
-      if(!stack_growth(fault_addr))
+      //printf("stack growth 시작\n");
+      if(!stack_growth(fault_addr)){
+         //printf("stack growth 실패\n");
          exit(-1);
+      }
    }
    else{
       exit(-1);
    }
   }
+  else{
+   if(write && !(spte->write_enable)){
+    //printf("write 할 수 없는 파일\n");
+    exit(-1);
+   }
 
-  if(write && !(spte->write_enable))
-   exit(-1);
-
-  // handle_page_fault 함수 추가
-  if (!handle_page_fault(spte))
-   exit(-1);
+   // handle_page_fault 함수 추가
+   if (!handle_page_fault(spte)){
+    //printf("handle_page_fault 발생\n");
+    exit(-1);
+   }
+  }
   
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
