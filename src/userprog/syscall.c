@@ -221,13 +221,13 @@ int read(int fd, void *buffer, unsigned size) {
       if (w == '\0')
         break;
     }
-    unpin(buffer, buffer + size);
     lock_release(&file_lock);
+    unpin(buffer, buffer + size);
     return idx;
   }
   if (fd == 1) {
-    unpin(buffer, buffer + size);
     lock_release(&file_lock);
+    unpin(buffer, buffer + size);
     return -1;
   }
 
@@ -235,14 +235,14 @@ int read(int fd, void *buffer, unsigned size) {
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
   if (f == NULL) {
-    unpin(buffer, buffer + size);
     lock_release(&file_lock);
+    unpin(buffer, buffer + size);
     return -1;
   }
 
   int read_size_byte = file_read(f, buffer, size);
-  //unpin_string (buffer, buffer + size);
   lock_release(&file_lock);
+  unpin(buffer, buffer + size);
   return read_size_byte;
 }
 
@@ -264,8 +264,10 @@ int write(int fd, const void *buffer, unsigned size) {
   // fd != 0, 1
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
-  if (f == NULL)
+  if (f == NULL){
+    lock_release(&file_lock);
     return 0;
+  }
   
   int write_bytes = file_write(f, buffer, size);
   lock_release(&file_lock);

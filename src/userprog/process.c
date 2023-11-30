@@ -648,3 +648,42 @@ bool handle_page_fault (struct page *spte) {
   }
   return false;  // not reached
 }
+
+bool stack_growth(void* addr){
+  if(addr < PHYS_BASE - 2048 * PGSIZE){ //stack의 최대 증가 가능 주소(8 MB)를 넘기면 false return
+    //printf("stack limit 초과\n");
+    return false;
+  }
+
+  struct frame* frame;
+  struct page* spte;
+
+  for(; !find_spte(addr); addr += PGSIZE) { // 현재 addr 부터 비어있는 스택을 모두 주어진 page로 채울것임
+    //printf("addr: %p\n", pg_round_down(addr));
+    frame = alloc_frame(PAL_USER | PAL_ZERO);
+    if(!frame){
+      //printf("frame 할당 실패\n");
+      return false;
+    }
+
+    if(!install_page(pg_round_down(addr), frame->kaddr, true)) { //frame table 설정, 실패시 frame free 후 false return
+      //printf("install page 실패\n");
+      free_frame(frame->kaddr);
+      return false;
+    }
+
+    spte = malloc(sizeof(struct page)); //spte 할당 및 초기화
+
+    frame->spte = spte;
+    spte->type = VM_ANON;
+    spte->vaddr = pg_round_down(addr);
+    spte->write_enable = true;
+    spte->is_loaded = true;
+
+    if(!insert_page(&(frame->t->spt), spte)){
+      //printf("insert page 실패\n");
+      return false;
+    }
+  }
+  return true;
+}
