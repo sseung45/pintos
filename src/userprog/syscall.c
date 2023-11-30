@@ -265,8 +265,11 @@ int write(int fd, const void *buffer, unsigned size) {
   // fd != 0, 1
   struct file_info *f_info = search(&thread_current()->file_list, fd);
   struct file *f = f_info->file;
-  if (f == NULL)
+  if (f == NULL) {
+    lock_release(&file_lock);
+    unpin(buffer, buffer + size);
     return 0;
+  }
   
   int write_bytes = file_write(f, buffer, size);
   lock_release(&file_lock);
